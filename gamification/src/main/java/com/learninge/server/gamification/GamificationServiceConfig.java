@@ -31,6 +31,7 @@ public class GamificationServiceConfig {
   @Bean
   MongoSchema mongoSchema() {
     return new MongoSchema(
+        GamificationApplication.NAME,
         List.of(
             CollectionSpec.of(
                 "xp_events",

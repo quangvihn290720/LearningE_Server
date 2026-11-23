@@ -21,9 +21,15 @@ import org.bson.Document;
 public final class MongoSchema {
   private static final int VERSION = 1;
 
+  private final String service;
   private final List<CollectionSpec> collections;
 
-  public MongoSchema(List<CollectionSpec> collections) {
+  /**
+   * @param service tên dịch vụ, cũng là thư mục chứa validator: chế độ gộp có nhiều dịch vụ trên
+   *     cùng classpath nên tên tệp phải tách theo dịch vụ
+   */
+  public MongoSchema(String service, List<CollectionSpec> collections) {
+    this.service = service;
     this.collections = List.copyOf(collections);
   }
 
@@ -57,8 +63,8 @@ public final class MongoSchema {
         .replaceOne(new Document("_id", "schema"), meta, new ReplaceOptions().upsert(true));
   }
 
-  private static Document load(String collection) {
-    String path = "/mongo/" + collection + ".schema.json";
+  private Document load(String collection) {
+    String path = "/mongo/" + service + "/" + collection + ".schema.json";
     try (InputStream in = MongoSchema.class.getResourceAsStream(path)) {
       if (in == null) {
         throw new IllegalStateException("Thiếu " + path);

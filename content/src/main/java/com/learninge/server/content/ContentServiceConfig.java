@@ -26,6 +26,7 @@ public class ContentServiceConfig {
   @Bean
   MongoSchema mongoSchema() {
     return new MongoSchema(
+        ContentApplication.NAME,
         List.of(
             CollectionSpec.of("manifest"),
             CollectionSpec.of(

@@ -22,6 +22,14 @@ public final class TestMongo {
     return CLIENT.getDatabase("t" + UUID.randomUUID().toString().replace("-", "").substring(0, 20));
   }
 
+  public static MongoDatabase database(String name) {
+    return CLIENT.getDatabase(name);
+  }
+
+  public static String uri() {
+    return CONTAINER.getConnectionString();
+  }
+
   public static String[] properties(MongoDatabase database) {
     return new String[] {
       "--learninge.mongo.uri=" + CONTAINER.getConnectionString(),

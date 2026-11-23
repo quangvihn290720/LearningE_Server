@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Mỗi ngoại lệ phải có until="yyyy-MM-ddZ", lý do và người duyệt; quá hạn thì build lại thất bại. -->
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+</suppressions>

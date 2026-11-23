@@ -29,6 +29,7 @@ public class InsightServiceConfig {
   @Bean
   MongoSchema mongoSchema() {
     return new MongoSchema(
+        InsightApplication.NAME,
         List.of(
             CollectionSpec.of(
                 "audit_events",

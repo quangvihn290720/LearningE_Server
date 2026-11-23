@@ -1,0 +1,162 @@
+# Dev/demo: Mongo + 6 dịch vụ trên mạng nội bộ, chỉ edge publish ra 127.0.0.1:50051.
+#   deploy/gen-env.ps1 (hoặc .sh)      tạo deploy/.env
+#   docker compose -f deploy/docker-compose.yml up --build -d --wait
+name: learninge
+
+x-jvm: &jvm >-
+  -Xmx160m -Xss512k -XX:MaxMetaspaceSize=112m -XX:ReservedCodeCacheSize=48m -XX:MaxDirectMemorySize=48m
+  -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:+ExitOnOutOfMemoryError
+  -XX:+DisableAttachMechanism -XX:-CreateCoredumpOnCrash -XX:-HeapDumpOnOutOfMemoryError
+  -Djdk.serialFilter=!* -Dorg.sqlite.tmpdir=/app/native -Dio.netty.native.workdir=/app/native
+  -Djava.io.tmpdir=/tmp
+
+x-service: &service
+  restart: unless-stopped
+  user: "10001:10001"
+  read_only: true
+  tmpfs:
+    - /tmp:noexec,nosuid,size=16m
+    - /app/native:mode=0700,uid=10001,gid=10001,size=64m
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  ulimits: { core: 0 }
+  mem_limit: 320m
+  pids_limit: 256
+  networks: [backend]
+  stop_grace_period: 25s
+  healthcheck:
+    # Cổng quản trị chỉ nghe loopback trong container; bash có sẵn /dev/tcp nên không cần curl.
+    test:
+      - CMD
+      - bash
+      - -c
+      - >-
+        exec 3<>/dev/tcp/127.0.0.1/8081 &&
+        printf 'GET /actuator/health/readiness HTTP/1.0\r\n\r\n' >&3 && grep -q '"UP"' <&3
+    interval: 5s
+    timeout: 4s
+    retries: 12
+    start_period: 60s
+
+x-env: &env
+  APP_ENV: ${APP_ENV:-dev}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  LOGGING_STRUCTURED_FORMAT_CONSOLE: ${LOG_FORMAT-logstash}
+  LISTEN_HOST: 0.0.0.0        # chỉ bên trong mạng bridge nội bộ
+  MANAGEMENT_PORT: "8081"
+  JAVA_TOOL_OPTIONS: *jvm
+  LEARNINGE_INTERNAL_TOKEN: ${LEARNINGE_INTERNAL_TOKEN:?chạy deploy/gen-env trước}
+
+services:
+  mongo:
+    image: mongo:8.0.34
+    restart: unless-stopped
+    command: ["mongod", "--auth", "--wiredTigerCacheSizeGB", "0.25", "--bind_ip_all"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?}
+      MONGO_CONTENT_PASSWORD: ${MONGO_CONTENT_PASSWORD:?}
+      MONGO_GAME_PASSWORD: ${MONGO_GAME_PASSWORD:?}
+      MONGO_INSIGHT_PASSWORD: ${MONGO_INSIGHT_PASSWORD:?}
+    volumes:
+      - mongo-data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d:ro
+    networks: [backend]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  auth:
+    <<: *service
+    image: learninge/auth
+    build: { context: .., dockerfile: deploy/Dockerfile, args: { SERVICE: auth } }
+    environment:
+      <<: *env
+      AUTH_DB_PATH: /data/auth.db
+      LEARNINGE_SERVER_KEY: ${LEARNINGE_SERVER_KEY:?}
+      LEARNINGE_PSEUDONYM_KEY: ${LEARNINGE_PSEUDONYM_KEY:?}
+      SYNC_ADDR: sync:50053
+      GAMIFICATION_ADDR: gamification:50055
+      INSIGHT_ADDR: insight:50056
+    volumes: ["auth-data:/data"]
+
+  sync:
+    <<: *service
+    image: learninge/sync
+    build: { context: .., dockerfile: deploy/Dockerfile, args: { SERVICE: sync } }
+    environment:
+      <<: *env
+      SYNC_DB_PATH: /data/sync.db
+      LEARNINGE_PSEUDONYM_KEY: ${LEARNINGE_PSEUDONYM_KEY:?}
+      GAMIFICATION_ADDR: gamification:50055
+      INSIGHT_ADDR: insight:50056
+    volumes: ["sync-data:/data"]
+
+  content:
+    <<: *service
+    image: learninge/content
+    build: { context: .., dockerfile: deploy/Dockerfile, args: { SERVICE: content } }
+    environment:
+      <<: *env
+      LEARNINGE_MONGO_URI: mongodb://content:${MONGO_CONTENT_PASSWORD}@mongo:27017/?authSource=learninge_content
+      LEARNINGE_MONGO_DB: learninge_content
+    volumes: ["../content-data:/content-data:ro"]
+    depends_on: { mongo: { condition: service_healthy } }
+
+  gamification:
+    <<: *service
+    image: learninge/gamification
+    build: { context: .., dockerfile: deploy/Dockerfile, args: { SERVICE: gamification } }
+    environment:
+      <<: *env
+      LEARNINGE_MONGO_URI: mongodb://game:${MONGO_GAME_PASSWORD}@mongo:27017/?authSource=learninge_game
+      LEARNINGE_MONGO_DB: learninge_game
+      AUTH_ADDR: auth:50052
+      SYNC_ADDR: sync:50053
+    depends_on: { mongo: { condition: service_healthy } }
+
+  insight:
+    <<: *service
+    image: learninge/insight
+    build: { context: .., dockerfile: deploy/Dockerfile, args: { SERVICE: insight } }
+    environment:
+      <<: *env
+      LEARNINGE_MONGO_URI: mongodb://insight:${MONGO_INSIGHT_PASSWORD}@mongo:27017/?authSource=learninge_insight
+      LEARNINGE_MONGO_DB: learninge_insight
+    depends_on: { mongo: { condition: service_healthy } }
+
+  edge:
+    <<: *service
+    image: learninge/edge
+    build: { context: .., dockerfile: deploy/Dockerfile, args: { SERVICE: edge } }
+    environment:
+      <<: *env
+      AUTH_ADDR: auth:50052
+      SYNC_ADDR: sync:50053
+      CONTENT_ADDR: content:50054
+      GAMIFICATION_ADDR: gamification:50055
+      INSIGHT_ADDR: insight:50056
+      EDGE_TRUST_PROXY: ${EDGE_TRUST_PROXY:-false}
+      EDGE_TRUSTED_PROXIES: ${EDGE_TRUSTED_PROXIES:-127.0.0.0/8,::1/128}
+      EDGE_MIN_CLIENT: ${EDGE_MIN_CLIENT:-1}
+      LEARNINGE_GRPC_REFLECTION: ${LEARNINGE_GRPC_REFLECTION:-false}
+    networks: [backend, public]
+    ports: ["127.0.0.1:50051:50051"]
+    depends_on:
+      auth: { condition: service_healthy }
+      sync: { condition: service_healthy }
+
+networks:
+  backend:
+    internal: true            # không đường ra Internet, không publish được
+  public: {}
+
+volumes:
+  mongo-data: {}
+  auth-data: {}
+  sync-data: {}

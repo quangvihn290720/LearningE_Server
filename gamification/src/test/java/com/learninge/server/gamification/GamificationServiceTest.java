@@ -275,6 +275,13 @@ class GamificationServiceTest {
   }
 
   @Test
+  void documentsRefusedByTheValidatorAreAPermanentFailure() {
+    Event.Builder bad = xp(A, 10, "2026-11-12T02:00:00Z");
+    bad.getXpRecordedBuilder().setSourceType("CHEAT");
+    assertFails(() -> publish(bad), ErrorCode.VALIDATION_ERROR);
+  }
+
+  @Test
   void mongoDownMeansUnavailableQuicklyAndNotServing() {
     try (TestService down =
         TestService.start(
