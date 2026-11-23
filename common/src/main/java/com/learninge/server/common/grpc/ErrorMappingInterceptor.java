@@ -13,8 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Interceptor trong cùng: mọi ngoại lệ của handler đều thành lỗi có {@code error-code}, không lộ SQL,
- * đường dẫn hay stack trace ra ngoài (TM-22, TM-52).
+ * Interceptor trong cùng: mọi ngoại lệ của handler đều thành lỗi có {@code error-code}, không lộ
+ * SQL, đường dẫn hay stack trace ra ngoài (TM-22, TM-52).
  */
 public final class ErrorMappingInterceptor implements ServerInterceptor {
   /** Đổi lỗi đặc thù của dịch vụ (vd Mongo ngừng) thành {@link AppException}; null = không biết. */

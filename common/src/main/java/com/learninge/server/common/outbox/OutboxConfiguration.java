@@ -56,8 +56,7 @@ public class OutboxConfiguration {
             .distinct()
             .toList();
     scheduleHousekeeping(tasks, store, clock, Duration.ofDays(properties.retentionDays()));
-    OutboxDrainer drainer =
-        new OutboxDrainer(store, publisher, backoff, clock, properties.batch());
+    OutboxDrainer drainer = new OutboxDrainer(store, publisher, backoff, clock, properties.batch());
     return new OutboxRelay(drainer, destinations, common.backgroundEnabled());
   }
 

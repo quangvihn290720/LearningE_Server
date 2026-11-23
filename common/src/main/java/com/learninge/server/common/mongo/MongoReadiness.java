@@ -10,8 +10,8 @@ import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
 
 /**
- * Dịch vụ vẫn lên khi Mongo ngừng: thử tạo lược đồ ở nền cho tới khi được, sau đó ping định kỳ. Health
- * đọc kết quả đã lưu nên không bao giờ chờ Mongo.
+ * Dịch vụ vẫn lên khi Mongo ngừng: thử tạo lược đồ ở nền cho tới khi được, sau đó ping định kỳ.
+ * Health đọc kết quả đã lưu nên không bao giờ chờ Mongo.
  */
 public final class MongoReadiness implements HealthIndicator {
   static final Duration PERIOD = Duration.ofSeconds(2);

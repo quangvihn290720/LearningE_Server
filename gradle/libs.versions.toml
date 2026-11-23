@@ -7,7 +7,7 @@ grpcJava = "1.84.1"            # must equal grpc-java in the Boot BOM
 jacoco = "0.8.16"
 owaspDependencyCheck = "13.0.0"
 spotless = "8.11.0"
-googleJavaFormat = "1.37.0"
+googleJavaFormat = "1.35.0"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "springBoot" }

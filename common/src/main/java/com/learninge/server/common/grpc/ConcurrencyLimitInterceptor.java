@@ -13,8 +13,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * Trần số RPC được xử lý cùng lúc; chờ quá lâu thì báo bận thay vì dồn việc vô hạn.
  *
- * <p>Giấy phép chỉ giữ trong {@code onHalfClose} — nơi handler unary thật sự chạy — nên lời gọi đang
- * chờ client gửi dữ liệu không chiếm chỗ. Health không qua giới hạn để không bị đói.
+ * <p>Giấy phép chỉ giữ trong {@code onHalfClose} — nơi handler unary thật sự chạy — nên lời gọi
+ * đang chờ client gửi dữ liệu không chiếm chỗ. Health không qua giới hạn để không bị đói.
  */
 public final class ConcurrencyLimitInterceptor implements ServerInterceptor {
   private static final String HEALTH_PREFIX = "grpc.health.v1.";

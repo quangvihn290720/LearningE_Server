@@ -6,6 +6,7 @@ dependencies {
     api(libs.spring.boot.starter.actuator)
     api(libs.grpc.services)
     api(libs.grpc.netty)
+    api(libs.caffeine)
 
     // Optional: only auth/sync put SQLite, and only content/gamification/insight put MongoDB, on their classpath.
     compileOnly(libs.spring.boot.starter.jdbc)

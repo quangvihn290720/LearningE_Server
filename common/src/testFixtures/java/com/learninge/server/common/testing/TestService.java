@@ -18,6 +18,7 @@ import org.assertj.core.api.Assertions;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.grpc.server.lifecycle.GrpcServerLifecycle;
 
 /** Chạy một dịch vụ thật (Spring + Netty, cổng ngẫu nhiên) và gọi nó qua mạng loopback. */
 public final class TestService implements AutoCloseable {
@@ -28,8 +29,7 @@ public final class TestService implements AutoCloseable {
 
   private TestService(ConfigurableApplicationContext context) {
     this.context = context;
-    int port = context.getEnvironment().getRequiredProperty("local.grpc.server.port", int.class);
-    this.channel = NettyChannelBuilder.forAddress("127.0.0.1", port).usePlaintext().build();
+    this.channel = NettyChannelBuilder.forAddress("127.0.0.1", port()).usePlaintext().build();
   }
 
   public static TestService start(
@@ -54,7 +54,7 @@ public final class TestService implements AutoCloseable {
   }
 
   public int port() {
-    return context.getEnvironment().getRequiredProperty("local.grpc.server.port", int.class);
+    return context.getBean(GrpcServerLifecycle.class).getPort();
   }
 
   /** Kênh không có khóa nội bộ. */

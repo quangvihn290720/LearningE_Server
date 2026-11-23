@@ -9,8 +9,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Kênh h2c tới dịch vụ nội bộ, mỗi dịch vụ một kênh dùng chung. Kết nối lười nên dịch vụ lên được dù
- * đích chưa sẵn sàng. Tắt tự thử lại: app và relay có chính sách thử lại riêng.
+ * Kênh h2c tới dịch vụ nội bộ, mỗi dịch vụ một kênh dùng chung. Kết nối lười nên dịch vụ lên được
+ * dù đích chưa sẵn sàng. Tắt tự thử lại: app và relay có chính sách thử lại riêng.
  */
 public final class InternalChannels implements AutoCloseable {
   private final Map<String, String> addresses;

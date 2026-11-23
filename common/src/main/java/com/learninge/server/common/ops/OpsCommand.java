@@ -2,7 +2,9 @@ package com.learninge.server.common.ops;
 
 import org.springframework.boot.ApplicationArguments;
 
-/** Lệnh vận hành chạy bằng chính jar của dịch vụ: {@code java -jar auth.jar --ops=backup --out=…}. */
+/**
+ * Lệnh vận hành chạy bằng chính jar của dịch vụ: {@code java -jar auth.jar --ops=backup --out=…}.
+ */
 public interface OpsCommand {
   String name();
 

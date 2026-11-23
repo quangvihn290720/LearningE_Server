@@ -68,8 +68,7 @@ class InterceptorsTest {
             .addService(ServerInterceptors.interceptForward(service, List.of(interceptors)))
             .build()
             .start();
-    channel =
-        NettyChannelBuilder.forAddress("127.0.0.1", server.getPort()).usePlaintext().build();
+    channel = NettyChannelBuilder.forAddress("127.0.0.1", server.getPort()).usePlaintext().build();
   }
 
   private static ServerInterceptor requestId() {
@@ -82,8 +81,7 @@ class InterceptorsTest {
 
   private GetManifestResponse call(Metadata headers) {
     Channel intercepted =
-        ClientInterceptors.intercept(
-            channel, MetadataUtils.newAttachHeadersInterceptor(headers));
+        ClientInterceptors.intercept(channel, MetadataUtils.newAttachHeadersInterceptor(headers));
     return ContentBackendGrpc.newBlockingStub(intercepted)
         .getManifest(GetManifestRequest.getDefaultInstance());
   }
@@ -164,8 +162,7 @@ class InterceptorsTest {
         requestId(),
         errors());
     StatusRuntimeException error =
-        Assertions.catchThrowableOfType(
-            StatusRuntimeException.class, () -> call(new Metadata()));
+        Assertions.catchThrowableOfType(StatusRuntimeException.class, () -> call(new Metadata()));
     assertThat(error.getStatus().getCode()).isEqualTo(Status.Code.INTERNAL);
     assertThat(error.getStatus().getDescription()).doesNotContain("secret");
     assertThat(error.getTrailers().get(MetadataKeys.ERROR_CODE)).isEqualTo("INTERNAL_ERROR");
@@ -180,8 +177,7 @@ class InterceptorsTest {
           throw toThrow.get();
         },
         errors());
-    Metadata locked =
-        TestService.assertFails(() -> call(new Metadata()), ErrorCode.ACCOUNT_LOCKED);
+    Metadata locked = TestService.assertFails(() -> call(new Metadata()), ErrorCode.ACCOUNT_LOCKED);
     assertThat(locked.get(MetadataKeys.RETRY_AFTER_SECONDS)).isEqualTo("60");
 
     toThrow.set(AppException.invalid("email", FieldErrors.REQUIRED));

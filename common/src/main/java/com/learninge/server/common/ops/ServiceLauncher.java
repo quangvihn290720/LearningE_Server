@@ -10,8 +10,8 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
 /**
- * Điểm khởi động chung. Mỗi dịch vụ có tệp cấu hình mang tên mình ({@code auth.yml}) đè lên
- * {@code learninge-defaults.yml}, nhờ vậy 6 dịch vụ cùng chạy được trong một JVM.
+ * Điểm khởi động chung. Mỗi dịch vụ có tệp cấu hình mang tên mình ({@code auth.yml}) đè lên {@code
+ * learninge-defaults.yml}, nhờ vậy 6 dịch vụ cùng chạy được trong một JVM.
  */
 public final class ServiceLauncher {
   private static final Logger log = LoggerFactory.getLogger(ServiceLauncher.class);

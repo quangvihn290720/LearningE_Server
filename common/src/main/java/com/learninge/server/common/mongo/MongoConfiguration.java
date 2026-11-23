@@ -12,7 +12,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** Kết nối MongoDB cho content, gamification, insight; dịch vụ khai báo bean {@link MongoSchema}. */
+/**
+ * Kết nối MongoDB cho content, gamification, insight; dịch vụ khai báo bean {@link MongoSchema}.
+ */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(MongoProperties.class)
 public class MongoConfiguration {
@@ -35,8 +37,7 @@ public class MongoConfiguration {
   }
 
   @Bean
-  MongoReadiness mongoReadiness(
-      MongoDatabase database, MongoSchema schema, BackgroundTasks tasks) {
+  MongoReadiness mongoReadiness(MongoDatabase database, MongoSchema schema, BackgroundTasks tasks) {
     MongoReadiness readiness = new MongoReadiness(database, schema);
     tasks.every("mongo-readiness", MongoReadiness.PERIOD, readiness::refresh);
     return readiness;

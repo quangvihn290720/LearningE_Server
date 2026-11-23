@@ -65,4 +65,4 @@ logging:
 
 learninge:
   env: ${APP_ENV:dev}
-  internal-token: ${LEARNINGE_INTERNAL_TOKEN}
+  internal-token: ${LEARNINGE_INTERNAL_TOKEN:}   # thiếu thì từ chối khởi động

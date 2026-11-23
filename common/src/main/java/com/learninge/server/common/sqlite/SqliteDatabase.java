@@ -121,7 +121,8 @@ public final class SqliteDatabase implements AutoCloseable {
   }
 
   private static void quickCheck(DataSource source, Path file) {
-    String result = JdbcClient.create(source).sql("PRAGMA quick_check").query(String.class).single();
+    String result =
+        JdbcClient.create(source).sql("PRAGMA quick_check").query(String.class).single();
     if (!"ok".equals(result)) {
       throw new IllegalStateException("File SQLite hỏng: " + file.getFileName());
     }

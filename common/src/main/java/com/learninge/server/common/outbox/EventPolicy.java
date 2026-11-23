@@ -37,7 +37,9 @@ public final class EventPolicy {
     if (!Uuids.isCanonical(event.getEventId())) {
       return Optional.of("event_id không hợp lệ");
     }
-    return payloadValid(event, destination) ? Optional.empty() : Optional.of("payload sai ràng buộc");
+    return payloadValid(event, destination)
+        ? Optional.empty()
+        : Optional.of("payload sai ràng buộc");
   }
 
   private static boolean payloadValid(Event event, Destination destination) {

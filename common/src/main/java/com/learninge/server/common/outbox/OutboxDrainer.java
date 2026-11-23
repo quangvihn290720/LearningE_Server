@@ -11,8 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Một bước phát sự kiện cho một đích. Giữ thứ tự theo {@code id}: dòng đầu hàng đợi chưa tới lượt thì
- * cả hàng chờ. Dòng bị từ chối vĩnh viễn 5 lần thì "chết" để không chặn dòng sau.
+ * Một bước phát sự kiện cho một đích. Giữ thứ tự theo {@code id}: dòng đầu hàng đợi chưa tới lượt
+ * thì cả hàng chờ. Dòng bị từ chối vĩnh viễn 5 lần thì "chết" để không chặn dòng sau.
  */
 final class OutboxDrainer {
   enum Outcome {

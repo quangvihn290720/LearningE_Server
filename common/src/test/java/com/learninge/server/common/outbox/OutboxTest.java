@@ -159,9 +159,7 @@ class OutboxTest {
   @Test
   void undecodablePayloadIsIsolated() {
     append();
-    db.writer()
-        .sql("UPDATE outbox SET payload = x'ffff' WHERE destination = 'sync'")
-        .update();
+    db.writer().sql("UPDATE outbox SET payload = x'ffff' WHERE destination = 'sync'").update();
     append();
     for (int i = 0; i < 6; i++) {
       drainer.drain(Destination.SYNC);
@@ -189,7 +187,8 @@ class OutboxTest {
     append();
     drainer.drain(Destination.SYNC);
     clock.advance(Duration.ofDays(7).minusHours(1));
-    assertThat(store.deletePublishedBefore(clock.millis() - Duration.ofDays(7).toMillis())).isZero();
+    assertThat(store.deletePublishedBefore(clock.millis() - Duration.ofDays(7).toMillis()))
+        .isZero();
     clock.advance(Duration.ofHours(2));
     assertThat(store.deletePublishedBefore(clock.millis() - Duration.ofDays(7).toMillis()))
         .isEqualTo(1);
