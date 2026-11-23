@@ -1,0 +1,8 @@
+{
+  "bsonType": "object", "additionalProperties": false,
+  "required": ["_id", "deleted_at"],
+  "properties": {
+    "_id": { "bsonType": "string", "pattern": "^[0-9a-f-]{36}$" },
+    "deleted_at": { "bsonType": "date" }
+  }
+}

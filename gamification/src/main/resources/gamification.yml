@@ -1,0 +1,15 @@
+spring:
+  grpc:
+    server:
+      port: ${LISTEN_PORT:50055}
+
+server:
+  port: ${MANAGEMENT_PORT:8085}
+
+learninge:
+  services:            # chỉ dùng cho --ops=rebuild
+    auth: ${AUTH_ADDR:localhost:50052}
+    sync: ${SYNC_ADDR:localhost:50053}
+  mongo:
+    uri: ${LEARNINGE_MONGO_URI:mongodb://localhost:27017}
+    database: ${LEARNINGE_MONGO_DB:learninge_game}

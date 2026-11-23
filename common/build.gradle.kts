@@ -20,4 +20,6 @@ dependencies {
     testImplementation(libs.sqlite.jdbc)
 
     testFixturesApi(libs.spring.boot.starter.test)
+    testFixturesApi(libs.testcontainers.mongodb)
+    testFixturesApi(libs.spring.boot.starter.mongodb)
 }

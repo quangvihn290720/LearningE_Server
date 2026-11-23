@@ -1,0 +1,14 @@
+{
+  "bsonType": "object", "additionalProperties": false,
+  "required": ["_id", "updated_at"],
+  "properties": {
+    "_id": { "bsonType": "string" },
+    "nickname": { "bsonType": "string", "pattern": "^[A-Za-z0-9_.]{3,20}$" },
+    "current_streak": { "bsonType": "int", "minimum": 0 },
+    "longest_streak": { "bsonType": "int", "minimum": 0 },
+    "total_xp": { "bsonType": "long", "minimum": 0 },
+    "profile_version": { "bsonType": "long" },
+    "streak_version": { "bsonType": "long" },
+    "updated_at": { "bsonType": "date" }
+  }
+}
