@@ -9,6 +9,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.boot.health.contributor.Status;
 
 class SqliteDatabaseTest {
   @TempDir Path dir;
@@ -92,6 +93,15 @@ class SqliteDatabaseTest {
     Files.writeString(file, "this is not a database, it is plain text ".repeat(200));
     assertThatThrownBy(() -> SqliteDatabase.open(file, "db/migration/outboxtest"))
         .isInstanceOf(RuntimeException.class);
+  }
+
+  @Test
+  void healthFollowsTheDatabase() {
+    SqliteDatabase db = open();
+    SqliteHealthIndicator health = new SqliteHealthIndicator(db);
+    assertThat(health.health().getStatus()).isEqualTo(Status.UP);
+    db.close();
+    assertThat(health.health().getStatus()).isEqualTo(Status.DOWN);
   }
 
   @Test

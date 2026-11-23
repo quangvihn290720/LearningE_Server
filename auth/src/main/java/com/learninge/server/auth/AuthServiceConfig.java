@@ -27,6 +27,7 @@ import com.learninge.server.common.security.UserPseudonym;
 import com.learninge.server.common.sqlite.SqliteBackupCommand;
 import com.learninge.server.common.sqlite.SqliteDatabase;
 import com.learninge.server.common.sqlite.SqliteErrors;
+import com.learninge.server.common.sqlite.SqliteHealthIndicator;
 import java.time.Clock;
 import java.time.Duration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -43,6 +44,11 @@ public class AuthServiceConfig {
   @Bean
   SqliteDatabase database(AuthProperties properties) {
     return SqliteDatabase.open(properties.dbPath(), "db/migration/auth");
+  }
+
+  @Bean
+  SqliteHealthIndicator sqliteHealthIndicator(SqliteDatabase database) {
+    return new SqliteHealthIndicator(database);
   }
 
   @Bean

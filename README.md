@@ -69,6 +69,14 @@ grpcurl -plaintext -H 'x-client-version: 1' -H 'authorization: Bearer <token>' \
 Test chạy **dịch vụ thật**: Spring + Netty thật trên cổng ngẫu nhiên, SQLite thật (file tạm), MongoDB thật
 (Testcontainers), đồng hồ giả. `all-in-one` có test đầu-cuối đi hết một vòng như app.
 
+Thêm hoặc nâng thư viện thì phải cập nhật mã băm, nếu không build dừng với "Dependency verification failed":
+
+```powershell
+./gradlew --write-verification-metadata sha256 build
+```
+
+Lệnh này chỉ ghi tệp nhị phân của hệ điều hành đang chạy; nâng `protoc` thì thêm cả bản `linux-x86_64` cho CI/Docker.
+
 ## Cấu hình
 
 Mọi biến nằm trong [deploy/.env.example](deploy/.env.example) và các tệp `<dịch vụ>/src/main/resources/<dịch vụ>.yml`.

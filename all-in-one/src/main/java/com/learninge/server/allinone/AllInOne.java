@@ -24,21 +24,33 @@ public final class AllInOne implements AutoCloseable {
 
   private static final Map<String, Class<?>> APPLICATIONS =
       Map.of(
-          "edge", EdgeApplication.class,
-          "auth", AuthApplication.class,
-          "sync", SyncApplication.class,
-          "content", ContentApplication.class,
-          "gamification", GamificationApplication.class,
-          "insight", InsightApplication.class);
+          "edge",
+          EdgeApplication.class,
+          "auth",
+          AuthApplication.class,
+          "sync",
+          SyncApplication.class,
+          "content",
+          ContentApplication.class,
+          "gamification",
+          GamificationApplication.class,
+          "insight",
+          InsightApplication.class);
 
   private static final Map<String, Integer> PORTS =
       Map.of(
-          "edge", 50051,
-          "auth", 50052,
-          "sync", 50053,
-          "content", 50054,
-          "gamification", 50055,
-          "insight", 50056);
+          "edge",
+          50051,
+          "auth",
+          50052,
+          "sync",
+          50053,
+          "content",
+          50054,
+          "gamification",
+          50055,
+          "insight",
+          50056);
 
   private final Map<String, ConfigurableApplicationContext> contexts = new LinkedHashMap<>();
 

@@ -79,7 +79,21 @@ class EdgeServiceTest {
   void setUp() throws Exception {
     backends = new FakeBackends();
     edge = start();
+    warmUp();
     backends.allow(sha256(TOKEN), USER, clock.millis() + Duration.ofDays(30).toMillis());
+  }
+
+  /**
+   * Lời gọi đầu tiên phải mở kết nối; máy CI chậm có thể vượt deadline 500 ms của ValidateToken.
+   */
+  private void warmUp() {
+    String warm = "w".repeat(43);
+    backends.allow(sha256(warm), OTHER, clock.millis() + 60_000);
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(20))
+        .ignoreExceptions()
+        .until(() -> !getMe(warm).getStatsPartial());
+    backends.received.clear();
   }
 
   private TestService start(String... extra) {

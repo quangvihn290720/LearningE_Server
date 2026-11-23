@@ -16,7 +16,7 @@ x-service: &service
   read_only: true
   tmpfs:
     - /tmp:noexec,nosuid,size=16m
-    - /app/native:mode=0700,uid=10001,gid=10001,size=64m
+    - /app/native:exec,mode=0700,uid=10001,gid=10001,size=64m
   cap_drop: [ALL]
   security_opt: ["no-new-privileges:true"]
   ulimits: { core: 0 }
@@ -49,7 +49,7 @@ x-env: &env
 
 services:
   mongo:
-    image: mongo:8.0.34
+    image: mongo:8.0.34@sha256:b9924c330a8bbc5800fe9c69f04a84e221eca7b28fd049a0354147d9908fa142
     restart: unless-stopped
     command: ["mongod", "--auth", "--wiredTigerCacheSizeGB", "0.25", "--bind_ip_all"]
     environment:

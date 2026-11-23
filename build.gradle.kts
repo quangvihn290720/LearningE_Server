@@ -13,6 +13,16 @@ allprojects {
     version = providers.gradleProperty("releaseVersion").getOrElse("0.1.0")
 }
 
+// Modules whose tests start a MongoDB container run one at a time: several containers starting at
+// once overload Docker Desktop and Testcontainers then fails to connect.
+abstract class MongoContainers : BuildService<BuildServiceParameters.None>
+
+val mongoContainers =
+    gradle.sharedServices.registerIfAbsent("mongoContainers", MongoContainers::class) {
+        maxParallelUsages = 1
+    }
+val mongoModules = setOf("content", "gamification", "insight", "all-in-one")
+
 subprojects {
     apply(plugin = "java-library")
     apply(plugin = "jacoco")
@@ -44,6 +54,7 @@ subprojects {
 
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
+        if (project.name in mongoModules) usesService(mongoContainers)
         testLogging {
             events("failed", "skipped")
             exceptionFormat = TestExceptionFormat.FULL

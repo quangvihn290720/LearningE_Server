@@ -1,7 +1,7 @@
-# Tạo deploy/.env với khóa ngẫu nhiên; không ghi đè file đã có.
+# Creates deploy/.env with random keys; never overwrites an existing file. (ASCII only: Windows PowerShell 5 reads scripts as ANSI.)
 $ErrorActionPreference = 'Stop'
 $target = Join-Path $PSScriptRoot '.env'
-if (Test-Path $target) { throw 'deploy/.env đã tồn tại, không ghi đè' }
+if (Test-Path $target) { throw 'deploy/.env already exists, not overwritten' }
 $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
 function New-Bytes([int]$n) { $b = New-Object byte[] $n; $rng.GetBytes($b); return ,$b }
 $lines = Get-Content (Join-Path $PSScriptRoot '.env.example') -Encoding UTF8 | ForEach-Object {
@@ -12,4 +12,4 @@ $lines = Get-Content (Join-Path $PSScriptRoot '.env.example') -Encoding UTF8 | F
     } else { $_ }
 }
 [System.IO.File]::WriteAllLines($target, [string[]]$lines, (New-Object System.Text.UTF8Encoding $false))
-Write-Output 'Đã tạo deploy/.env'
+Write-Output 'Created deploy/.env'

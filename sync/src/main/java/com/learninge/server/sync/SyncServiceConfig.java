@@ -11,6 +11,7 @@ import com.learninge.server.common.security.UserPseudonym;
 import com.learninge.server.common.sqlite.SqliteBackupCommand;
 import com.learninge.server.common.sqlite.SqliteDatabase;
 import com.learninge.server.common.sqlite.SqliteErrors;
+import com.learninge.server.common.sqlite.SqliteHealthIndicator;
 import com.learninge.server.sync.grpc.SyncBackendService;
 import com.learninge.server.sync.grpc.SyncEventSink;
 import com.learninge.server.sync.service.PullService;
@@ -35,6 +36,11 @@ public class SyncServiceConfig {
   @Bean
   SqliteDatabase database(SyncProperties properties) {
     return SqliteDatabase.open(properties.dbPath(), "db/migration/sync");
+  }
+
+  @Bean
+  SqliteHealthIndicator sqliteHealthIndicator(SqliteDatabase database) {
+    return new SqliteHealthIndicator(database);
   }
 
   @Bean
