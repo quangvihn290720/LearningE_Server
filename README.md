@@ -39,7 +39,7 @@ Emulator Android gọi `10.0.2.2:50051` (h2c, chỉ bản debug). Dừng: `docke
 **Cách 2 — một JVM, để phát triển.** Cần JDK 17 trở lên để chạy Gradle (Gradle tự tải JDK 21) và một MongoDB.
 
 ```powershell
-docker run -d --name learninge-mongo -p 127.0.0.1:27017:27017 mongo:8.0
+docker run -d --name learninge-mongo -p 127.0.0.1:27017:27017 mongo:8.0.34
 ./gradlew :all-in-one:bootRun --args=--all
 ```
 
@@ -111,6 +111,8 @@ Sửa nội dung trong `content-data/` phải **tăng `version`** của bộ/đ�
 Trước mỗi lần đổi lược đồ SQLite, dịch vụ tự tạo `<file>.bak-<phiên bản>`. Hoàn tác = dừng dịch vụ, chép file đó lại.
 
 ## Giới hạn đã biết
+- `mongo:8.0.34` không khởi động trên Linux kernel ≥ 6.19 (SERVER-121912). Bản đã sửa là 8.0.38 (20/11/2026); nâng từ
+  04/12/2026 theo quy tắc phát hành ≥ 2 tuần. Tới lúc đó chọn máy chủ có kernel cũ hơn (vd Ubuntu 24.04).
 - Một bản edge duy nhất: cache token và bộ đếm tần suất nằm trong bộ nhớ.
 - Nơi triển khai (DEC-023) chưa chốt; TLS kết thúc ở lớp phía trước edge.
 - `content-data/` là dữ liệu mẫu nhỏ, chờ bộ chính thức.
