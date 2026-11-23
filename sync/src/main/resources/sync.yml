@@ -1,0 +1,19 @@
+spring:
+  grpc:
+    server:
+      port: ${LISTEN_PORT:50053}
+
+server:
+  port: ${MANAGEMENT_PORT:8083}
+
+learninge:
+  services:
+    gamification: ${GAMIFICATION_ADDR:localhost:50055}
+    insight: ${INSIGHT_ADDR:localhost:50056}
+  outbox:
+    batch: ${OUTBOX_BATCH:200}
+    max-backoff-secs: ${OUTBOX_MAX_BACKOFF_SECS:15}
+    retention-days: ${OUTBOX_RETENTION_DAYS:7}
+  sync:
+    db-path: ${SYNC_DB_PATH:./data/sync.db}
+    pseudonym-key: ${LEARNINGE_PSEUDONYM_KEY:}
