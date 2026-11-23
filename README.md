@@ -61,7 +61,7 @@ grpcurl -plaintext -H 'x-client-version: 1' -H 'authorization: Bearer <token>' \
 ```powershell
 ./gradlew build                    # biên dịch, định dạng, toàn bộ test (cần Docker cho MongoDB)
 ./gradlew :sync:test               # một dịch vụ
-./gradlew spotlessApply            # tự sửa định dạng
+./gradlew spotlessApply            # bỏ import thừa, khoảng trắng cuối dòng
 ./gradlew jacocoTestReport         # độ phủ: */build/reports/jacoco
 ./gradlew dependencyCheckAggregate # quét lỗ hổng, cần biến NVD_API_KEY
 ```

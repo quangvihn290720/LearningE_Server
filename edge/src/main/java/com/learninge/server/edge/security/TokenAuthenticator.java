@@ -15,6 +15,7 @@ import com.learninge.server.common.security.Digests;
 import io.grpc.Metadata;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
@@ -29,117 +30,119 @@ import java.util.regex.Pattern;
  * thô không rời khỏi edge. Mọi đường thu hồi đều qua edge nên cache bị xóa ngay lúc đó.
  */
 public final class TokenAuthenticator {
-  private static final String SCHEME = "Bearer ";
-  private static final Pattern TOKEN = Pattern.compile("[A-Za-z0-9_-]{43}");
-  private static final long VALIDATE_TIMEOUT_MS = 500;
-  private static final int MAX_ENTRIES = 10_000;
+    private static final String SCHEME = "Bearer ";
+    private static final Pattern TOKEN = Pattern.compile("[A-Za-z0-9_-]{43}");
+    private static final long VALIDATE_TIMEOUT_MS = 500;
+    private static final int MAX_ENTRIES = 10_000;
 
-  private final InternalChannels channels;
-  private final Clock clock;
-  private final Cache<ByteString, Identity> cache;
-  private final ConcurrentHashMap<String, Set<ByteString>> tokensByUser = new ConcurrentHashMap<>();
+    private final InternalChannels channels;
+    private final Clock clock;
+    private final Cache<ByteString, Identity> cache;
+    private final ConcurrentHashMap<String, Set<ByteString>> tokensByUser = new ConcurrentHashMap<>();
 
-  /** Tăng mỗi lần thu hồi: kết quả hỏi từ trước đó không được đưa vào cache nữa. */
-  private final AtomicLong revocations = new AtomicLong();
+    /**
+     * Tăng mỗi lần thu hồi: kết quả hỏi từ trước đó không được đưa vào cache nữa.
+     */
+    private final AtomicLong revocations = new AtomicLong();
 
-  public TokenAuthenticator(InternalChannels channels, Duration maxAge, Clock clock) {
-    this.channels = channels;
-    this.clock = clock;
-    this.cache =
-        Caffeine.newBuilder()
-            .maximumSize(MAX_ENTRIES)
-            .ticker(() -> clock.millis() * 1_000_000)
-            .expireAfter(
-                Expiry.<ByteString, Identity>creating(
-                    (token, identity) -> {
-                      long untilExpiry = identity.expiresAtMs() - clock.millis();
-                      return Duration.ofMillis(Math.min(maxAge.toMillis(), untilExpiry));
-                    }))
-            .removalListener(
-                (token, identity, cause) -> {
-                  if (identity != null && cause.wasEvicted()) {
-                    forget(identity);
-                  }
-                })
-            .build();
-  }
-
-  Identity authenticate(Metadata headers) {
-    ByteString tokenSha256 = hashOf(headers.get(MetadataKeys.AUTHORIZATION));
-    Identity cached = cache.getIfPresent(tokenSha256);
-    if (cached != null && cached.expiresAtMs() > clock.millis()) {
-      return cached;
+    public TokenAuthenticator(InternalChannels channels, Duration maxAge, Clock clock) {
+        this.channels = channels;
+        this.clock = clock;
+        this.cache =
+                Caffeine.newBuilder()
+                        .maximumSize(MAX_ENTRIES)
+                        .ticker(() -> clock.millis() * 1_000_000)
+                        .expireAfter(
+                                Expiry.<ByteString, Identity>creating(
+                                        (token, identity) -> {
+                                            long untilExpiry = identity.expiresAtMs() - clock.millis();
+                                            return Duration.ofMillis(Math.min(maxAge.toMillis(), untilExpiry));
+                                        }))
+                        .removalListener(
+                                (token, identity, cause) -> {
+                                    if (identity != null && cause.wasEvicted()) {
+                                        forget(identity);
+                                    }
+                                })
+                        .build();
     }
-    long before = revocations.get();
-    Identity identity = validate(tokenSha256);
-    remember(identity, before);
-    return identity;
-  }
 
-  public void invalidateToken(Identity identity) {
-    revocations.incrementAndGet();
-    cache.invalidate(identity.tokenSha256());
-    forget(identity);
-  }
+    Identity authenticate(Metadata headers) {
+        ByteString tokenSha256 = hashOf(headers.get(MetadataKeys.AUTHORIZATION));
+        Identity cached = cache.getIfPresent(tokenSha256);
+        if (cached != null && cached.expiresAtMs() > clock.millis()) {
+            return cached;
+        }
+        long before = revocations.get();
+        Identity identity = validate(tokenSha256);
+        remember(identity, before);
+        return identity;
+    }
 
-  public void invalidateUser(String userId) {
-    revocations.incrementAndGet();
-    Set<ByteString> tokens = tokensByUser.remove(userId);
-    if (tokens != null) {
-      cache.invalidateAll(tokens);
+    public void invalidateToken(Identity identity) {
+        revocations.incrementAndGet();
+        cache.invalidate(identity.tokenSha256());
+        forget(identity);
     }
-  }
 
-  private void remember(Identity identity, long revocationsBefore) {
-    if (revocations.get() != revocationsBefore || identity.expiresAtMs() <= clock.millis()) {
-      return;
+    public void invalidateUser(String userId) {
+        revocations.incrementAndGet();
+        Set<ByteString> tokens = tokensByUser.remove(userId);
+        if (tokens != null) {
+            cache.invalidateAll(tokens);
+        }
     }
-    tokensByUser
-        .computeIfAbsent(identity.userId(), u -> ConcurrentHashMap.newKeySet())
-        .add(identity.tokenSha256());
-    cache.put(identity.tokenSha256(), identity);
-    if (revocations.get() != revocationsBefore) {
-      cache.invalidate(identity.tokenSha256());
-    }
-  }
 
-  private void forget(Identity identity) {
-    tokensByUser.computeIfPresent(
-        identity.userId(),
-        (user, tokens) -> {
-          tokens.remove(identity.tokenSha256());
-          return tokens.isEmpty() ? null : tokens;
-        });
-  }
+    private void remember(Identity identity, long revocationsBefore) {
+        if (revocations.get() != revocationsBefore || identity.expiresAtMs() <= clock.millis()) {
+            return;
+        }
+        tokensByUser
+                .computeIfAbsent(identity.userId(), u -> ConcurrentHashMap.newKeySet())
+                .add(identity.tokenSha256());
+        cache.put(identity.tokenSha256(), identity);
+        if (revocations.get() != revocationsBefore) {
+            cache.invalidate(identity.tokenSha256());
+        }
+    }
 
-  private Identity validate(ByteString tokenSha256) {
-    try {
-      ValidateTokenResponse response =
-          TokenValidatorGrpc.newBlockingStub(channels.to("auth"))
-              .withDeadlineAfter(VALIDATE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-              .validateToken(ValidateTokenRequest.newBuilder().setTokenSha256(tokenSha256).build());
-      return new Identity(
-          response.getUserId(), response.getUserHmac(), response.getExpiresAtMs(), tokenSha256);
-    } catch (StatusRuntimeException e) {
-      Metadata trailers = e.getTrailers();
-      boolean rejectedByAuth =
-          e.getStatus().getCode() == Status.Code.UNAUTHENTICATED
-              && trailers != null
-              && trailers.containsKey(MetadataKeys.ERROR_CODE);
-      // auth ngừng hoặc sai khóa nội bộ KHÔNG được thành UNAUTHENTICATED: app sẽ xóa token.
-      throw AppException.of(
-          rejectedByAuth ? ErrorCode.UNAUTHENTICATED : ErrorCode.SERVICE_UNAVAILABLE);
+    private void forget(Identity identity) {
+        tokensByUser.computeIfPresent(
+                identity.userId(),
+                (user, tokens) -> {
+                    tokens.remove(identity.tokenSha256());
+                    return tokens.isEmpty() ? null : tokens;
+                });
     }
-  }
 
-  private static ByteString hashOf(String authorization) {
-    if (authorization == null || !authorization.startsWith(SCHEME)) {
-      throw AppException.of(ErrorCode.UNAUTHENTICATED);
+    private Identity validate(ByteString tokenSha256) {
+        try {
+            ValidateTokenResponse response =
+                    TokenValidatorGrpc.newBlockingStub(channels.to("auth"))
+                            .withDeadlineAfter(VALIDATE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                            .validateToken(ValidateTokenRequest.newBuilder().setTokenSha256(tokenSha256).build());
+            return new Identity(
+                    response.getUserId(), response.getUserHmac(), response.getExpiresAtMs(), tokenSha256);
+        } catch (StatusRuntimeException e) {
+            Metadata trailers = e.getTrailers();
+            boolean rejectedByAuth =
+                    e.getStatus().getCode() == Status.Code.UNAUTHENTICATED
+                            && trailers != null
+                            && trailers.containsKey(MetadataKeys.ERROR_CODE);
+            // auth ngừng hoặc sai khóa nội bộ KHÔNG được thành UNAUTHENTICATED: app sẽ xóa token.
+            throw AppException.of(
+                    rejectedByAuth ? ErrorCode.UNAUTHENTICATED : ErrorCode.SERVICE_UNAVAILABLE);
+        }
     }
-    String token = authorization.substring(SCHEME.length());
-    if (!TOKEN.matcher(token).matches()) {
-      throw AppException.of(ErrorCode.UNAUTHENTICATED);
+
+    private static ByteString hashOf(String authorization) {
+        if (authorization == null || !authorization.startsWith(SCHEME)) {
+            throw AppException.of(ErrorCode.UNAUTHENTICATED);
+        }
+        String token = authorization.substring(SCHEME.length());
+        if (!TOKEN.matcher(token).matches()) {
+            throw AppException.of(ErrorCode.UNAUTHENTICATED);
+        }
+        return ByteString.copyFrom(Digests.sha256(token.getBytes(StandardCharsets.US_ASCII)));
     }
-    return ByteString.copyFrom(Digests.sha256(token.getBytes(StandardCharsets.US_ASCII)));
-  }
 }

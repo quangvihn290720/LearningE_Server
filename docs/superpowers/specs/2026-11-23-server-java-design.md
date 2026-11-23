@@ -39,6 +39,18 @@ Dịch vụ không phụ thuộc nhau, chỉ gọi qua stub. Không Lombok, JPA,
 | I-10 | `progress.changed.version = updated_at` có thể trùng trong cùng mili giây | `max(now, bản trước + 1)` — luôn tăng |
 | I-11 | `word_uid` dạng UUID của từ người khác | `INVALID_RECORD` nếu từ đã tồn tại và thuộc người khác |
 | I-12 | SRS ghi `term ≤ 50`, hợp đồng trần 1 000 | Theo SRS: term 50, reading 60, meaning 200, ví dụ 300, tên bộ 50, mô tả 200 |
+| I-13 | Hòa XP: BR-069 ghi "lúc server ghi nhận", DATABASE-DESIGN dùng `occurred_at` (app gửi, lùi được) | Theo BR-069: `received_at` |
+| I-14 | Spring Data MongoDB | Chỉ dùng driver chính thức (`spring-boot-starter-mongodb`): không có `_class`, ít phép thuật hơn |
+| I-15 | Interceptor lỗi: `GrpcExceptionHandler` của Spring | `ErrorMappingInterceptor` tự viết ở trong cùng, thứ tự chắc chắn |
+| I-16 | Sự kiện đến muộn dựng lại dữ liệu ở insight sau khi xóa tài khoản | Thêm collection `deleted_users` (bút danh, TTL 120 ngày) |
+| I-17 | Validator Mongo từ chối sự kiện → relay thử lại mãi | Lỗi 121 → `INVALID_ARGUMENT` → "dead" sau 5 lần, không kẹt hàng |
+| I-18 | Khóa nội bộ sai trả `UNAUTHENTICATED` làm app đăng xuất oan | Không kèm `error-code`; edge đổi thành `SERVICE_UNAVAILABLE`/`INTERNAL` |
+| I-19 | `LISTEN_ADDR` dạng `host:port` | Tách `LISTEN_HOST`, `LISTEN_PORT` (Spring gRPC nhận riêng) |
+| I-20 | `request_id` trong payload sự kiện (TC-SVC-09) chưa có trường | Thêm `Event.request_id = 7` (gói nội bộ, chỉ cộng thêm) |
+| I-21 | Google Java Style (chờ duyệt KG-8) | Theo yêu cầu: định dạng mặc định IntelliJ (Ctrl+Alt+L) |
+| I-22 | Schema Mongo trùng tên giữa dịch vụ ở chế độ gộp | Thư mục riêng `mongo/<dịch vụ>/` (lỗi do test đầu-cuối phát hiện) |
+
+**Chưa làm:** seed tài khoản demo (`LEARNINGE_DEMO_SEED`), `grammar.json` (tính năng Won't), chốt nơi triển khai (DEC-023).
 
 ## Để lại cho người xây
 Tên lớp nội bộ, cách chia test, thông điệp log, bố cục README.

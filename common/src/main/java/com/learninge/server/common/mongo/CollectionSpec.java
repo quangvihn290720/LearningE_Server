@@ -1,6 +1,7 @@
 package com.learninge.server.common.mongo;
 
 import com.mongodb.client.model.IndexModel;
+
 import java.util.List;
 
 /**
@@ -8,7 +9,7 @@ import java.util.List;
  * index.
  */
 public record CollectionSpec(String name, List<IndexModel> indexes) {
-  public static CollectionSpec of(String name, IndexModel... indexes) {
-    return new CollectionSpec(name, List.of(indexes));
-  }
+    public static CollectionSpec of(String name, IndexModel... indexes) {
+        return new CollectionSpec(name, List.of(indexes));
+    }
 }

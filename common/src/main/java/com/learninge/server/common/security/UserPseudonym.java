@@ -8,14 +8,14 @@ import java.util.HexFormat;
  * user). Chỉ auth và sync giữ khóa (D-10).
  */
 public final class UserPseudonym {
-  private final byte[] key;
+    private final byte[] key;
 
-  public UserPseudonym(byte[] key) {
-    this.key = key.clone();
-  }
+    public UserPseudonym(byte[] key) {
+        this.key = key.clone();
+    }
 
-  public String of(String userId) {
-    byte[] mac = Digests.hmacSha256(key, userId.getBytes(StandardCharsets.UTF_8));
-    return HexFormat.of().formatHex(mac, 0, 16);
-  }
+    public String of(String userId) {
+        byte[] mac = Digests.hmacSha256(key, userId.getBytes(StandardCharsets.UTF_8));
+        return HexFormat.of().formatHex(mac, 0, 16);
+    }
 }

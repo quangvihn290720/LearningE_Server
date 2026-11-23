@@ -1,12 +1,14 @@
 package com.learninge.server.common.outbox;
 
-/** Dịch vụ nhận sự kiện. {@link #id()} trùng tên kênh và giá trị cột {@code outbox.destination}. */
+/**
+ * Dịch vụ nhận sự kiện. {@link #id()} trùng tên kênh và giá trị cột {@code outbox.destination}.
+ */
 public enum Destination {
-  SYNC,
-  GAMIFICATION,
-  INSIGHT;
+    SYNC,
+    GAMIFICATION,
+    INSIGHT;
 
-  public String id() {
-    return name().toLowerCase(java.util.Locale.ROOT);
-  }
+    public String id() {
+        return name().toLowerCase(java.util.Locale.ROOT);
+    }
 }

@@ -17,6 +17,8 @@
 9. Thời gian lấy từ `Clock` được tiêm vào, không gọi `System.currentTimeMillis()`.
 10. Thư viện có trong BOM Spring Boot thì không ghi phiên bản; thêm thư viện mới phải nêu lý do trong PR.
 
+11. Định dạng: kiểu mặc định của IntelliJ IDEA (Ctrl+Alt+L), chép trong `.editorconfig`. Android Studio dùng cùng bộ.
+
 ## Đổi `.proto`
 Trong v1 chỉ **thêm**: trường số mới, RPC mới, giá trị enum mới. Không đổi số, kiểu, tên, nghĩa. Xóa thì `reserved`.
 Sau khi merge, đồng bộ sang repo app bằng `tools/sync-proto.ps1` ở repo app.

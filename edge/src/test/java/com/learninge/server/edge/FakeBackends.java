@@ -33,6 +33,7 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.protobuf.services.HealthStatusManager;
 import io.grpc.stub.ServerCalls;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -47,176 +48,179 @@ import java.util.function.Function;
  * phản hồi/lỗi do test đặt.
  */
 final class FakeBackends implements AutoCloseable {
-  /** Một lời gọi mà dịch vụ phía sau thật sự nhận được. */
-  record Received(String method, Metadata headers, Message request, long deadlineMs) {}
-
-  private static final Context.Key<Metadata> HEADERS = Context.key("headers");
-
-  final List<Received> received = new CopyOnWriteArrayList<>();
-  private final Map<String, Function<Message, Message>> handlers = new ConcurrentHashMap<>();
-  private final Map<com.google.protobuf.ByteString, ValidateTokenResponse> tokens =
-      new ConcurrentHashMap<>();
-  private final Server server;
-
-  FakeBackends() throws IOException {
-    NettyServerBuilder builder =
-        NettyServerBuilder.forAddress(new InetSocketAddress("127.0.0.1", 0));
-    for (ServiceDescriptor service :
-        List.of(
-            TokenValidatorGrpc.getServiceDescriptor(),
-            AuthBackendGrpc.getServiceDescriptor(),
-            SyncBackendGrpc.getServiceDescriptor(),
-            ContentBackendGrpc.getServiceDescriptor(),
-            GamificationBackendGrpc.getServiceDescriptor(),
-            InsightBackendGrpc.getServiceDescriptor())) {
-      builder.addService(fake(service));
+    /**
+     * Một lời gọi mà dịch vụ phía sau thật sự nhận được.
+     */
+    record Received(String method, Metadata headers, Message request, long deadlineMs) {
     }
-    builder.addService(new HealthStatusManager().getHealthService());
-    builder.intercept(new CaptureHeaders());
-    server = builder.build().start();
 
-    on(
-        TokenValidatorGrpc.getValidateTokenMethod(),
-        request -> {
-          ValidateTokenResponse found =
-              tokens.get(((ValidateTokenRequest) request).getTokenSha256());
-          if (found == null) {
-            throw AppException.of(ErrorCode.UNAUTHENTICATED);
-          }
-          return found;
-        });
-    on(
-        AuthBackendGrpc.getGetProfileMethod(),
-        r -> GetProfileResponse.newBuilder().setUser(user("Minh")).build());
-    on(
-        SyncBackendGrpc.getGetStreakMethod(),
-        r ->
-            GetStreakResponse.newBuilder()
-                .setTotalXp(900)
-                .setCurrentStreak(5)
-                .setLongestStreak(9)
-                .setLastStudyDate("2026-11-12")
-                .build());
-    on(
-        GamificationBackendGrpc.getGetStatsMethod(),
-        r -> GetStatsResponse.newBuilder().setTotalXp(800).setWeekXp(120).build());
-  }
+    private static final Context.Key<Metadata> HEADERS = Context.key("headers");
 
-  static User user(String name) {
-    return User.newBuilder().setId(EdgeServiceTest.USER).setDisplayName(name).build();
-  }
+    final List<Received> received = new CopyOnWriteArrayList<>();
+    private final Map<String, Function<Message, Message>> handlers = new ConcurrentHashMap<>();
+    private final Map<com.google.protobuf.ByteString, ValidateTokenResponse> tokens =
+            new ConcurrentHashMap<>();
+    private final Server server;
 
-  static AuthSession session() {
-    return AuthSession.newBuilder().setToken("new").setUser(user("Minh")).build();
-  }
+    FakeBackends() throws IOException {
+        NettyServerBuilder builder =
+                NettyServerBuilder.forAddress(new InetSocketAddress("127.0.0.1", 0));
+        for (ServiceDescriptor service :
+                List.of(
+                        TokenValidatorGrpc.getServiceDescriptor(),
+                        AuthBackendGrpc.getServiceDescriptor(),
+                        SyncBackendGrpc.getServiceDescriptor(),
+                        ContentBackendGrpc.getServiceDescriptor(),
+                        GamificationBackendGrpc.getServiceDescriptor(),
+                        InsightBackendGrpc.getServiceDescriptor())) {
+            builder.addService(fake(service));
+        }
+        builder.addService(new HealthStatusManager().getHealthService());
+        builder.intercept(new CaptureHeaders());
+        server = builder.build().start();
 
-  int port() {
-    return server.getPort();
-  }
-
-  void allow(com.google.protobuf.ByteString sha256, String userId, long expiresAtMs) {
-    tokens.put(
-        sha256,
-        ValidateTokenResponse.newBuilder()
-            .setUserId(userId)
-            .setUserHmac("0123456789abcdef0123456789abcdef")
-            .setExpiresAtMs(expiresAtMs)
-            .build());
-  }
-
-  void revokeAll() {
-    tokens.clear();
-  }
-
-  void on(MethodDescriptor<?, ?> method, Function<Message, Message> handler) {
-    handlers.put(method.getFullMethodName(), handler);
-  }
-
-  void fail(MethodDescriptor<?, ?> method, Status status) {
-    on(
-        method,
-        r -> {
-          throw status.asRuntimeException();
-        });
-  }
-
-  void fail(MethodDescriptor<?, ?> method, AppException error) {
-    on(
-        method,
-        r -> {
-          throw error;
-        });
-  }
-
-  void delay(MethodDescriptor<?, ?> method, long millis, Message response) {
-    on(
-        method,
-        r -> {
-          try {
-            Thread.sleep(millis);
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-          }
-          return response;
-        });
-  }
-
-  List<Received> calls(MethodDescriptor<?, ?> method) {
-    return received.stream().filter(r -> r.method().equals(method.getFullMethodName())).toList();
-  }
-
-  private ServerServiceDefinition fake(ServiceDescriptor service) {
-    ServerServiceDefinition.Builder definition = ServerServiceDefinition.builder(service);
-    for (MethodDescriptor<?, ?> method : service.getMethods()) {
-      addMethod(definition, method);
+        on(
+                TokenValidatorGrpc.getValidateTokenMethod(),
+                request -> {
+                    ValidateTokenResponse found =
+                            tokens.get(((ValidateTokenRequest) request).getTokenSha256());
+                    if (found == null) {
+                        throw AppException.of(ErrorCode.UNAUTHENTICATED);
+                    }
+                    return found;
+                });
+        on(
+                AuthBackendGrpc.getGetProfileMethod(),
+                r -> GetProfileResponse.newBuilder().setUser(user("Minh")).build());
+        on(
+                SyncBackendGrpc.getGetStreakMethod(),
+                r ->
+                        GetStreakResponse.newBuilder()
+                                .setTotalXp(900)
+                                .setCurrentStreak(5)
+                                .setLongestStreak(9)
+                                .setLastStudyDate("2026-11-12")
+                                .build());
+        on(
+                GamificationBackendGrpc.getGetStatsMethod(),
+                r -> GetStatsResponse.newBuilder().setTotalXp(800).setWeekXp(120).build());
     }
-    return definition.build();
-  }
 
-  @SuppressWarnings("unchecked")
-  private void addMethod(
-      ServerServiceDefinition.Builder definition, MethodDescriptor<?, ?> method) {
-    MethodDescriptor<Message, Message> typed = (MethodDescriptor<Message, Message>) method;
-    Message defaultResponse =
-        ((MethodDescriptor.PrototypeMarshaller<Message>) typed.getResponseMarshaller())
-            .getMessagePrototype();
-    ServerCallHandler<Message, Message> handler =
-        ServerCalls.asyncUnaryCall(
-            (request, observer) -> {
-              long deadline =
-                  Context.current().getDeadline() == null
-                      ? -1
-                      : Context.current().getDeadline().timeRemaining(TimeUnit.MILLISECONDS);
-              received.add(
-                  new Received(method.getFullMethodName(), HEADERS.get(), request, deadline));
-              try {
-                observer.onNext(
-                    handlers
-                        .getOrDefault(method.getFullMethodName(), r -> defaultResponse)
-                        .apply(request));
-                observer.onCompleted();
-              } catch (AppException e) {
-                observer.onError(GrpcErrors.status(e).asRuntimeException(GrpcErrors.trailers(e)));
-              } catch (StatusRuntimeException e) {
-                observer.onError(e);
-              }
-            });
-    definition.addMethod(ServerMethodDefinition.create(typed, handler));
-  }
+    static User user(String name) {
+        return User.newBuilder().setId(EdgeServiceTest.USER).setDisplayName(name).build();
+    }
 
-  private static final class CaptureHeaders implements ServerInterceptor {
+    static AuthSession session() {
+        return AuthSession.newBuilder().setToken("new").setUser(user("Minh")).build();
+    }
+
+    int port() {
+        return server.getPort();
+    }
+
+    void allow(com.google.protobuf.ByteString sha256, String userId, long expiresAtMs) {
+        tokens.put(
+                sha256,
+                ValidateTokenResponse.newBuilder()
+                        .setUserId(userId)
+                        .setUserHmac("0123456789abcdef0123456789abcdef")
+                        .setExpiresAtMs(expiresAtMs)
+                        .build());
+    }
+
+    void revokeAll() {
+        tokens.clear();
+    }
+
+    void on(MethodDescriptor<?, ?> method, Function<Message, Message> handler) {
+        handlers.put(method.getFullMethodName(), handler);
+    }
+
+    void fail(MethodDescriptor<?, ?> method, Status status) {
+        on(
+                method,
+                r -> {
+                    throw status.asRuntimeException();
+                });
+    }
+
+    void fail(MethodDescriptor<?, ?> method, AppException error) {
+        on(
+                method,
+                r -> {
+                    throw error;
+                });
+    }
+
+    void delay(MethodDescriptor<?, ?> method, long millis, Message response) {
+        on(
+                method,
+                r -> {
+                    try {
+                        Thread.sleep(millis);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    return response;
+                });
+    }
+
+    List<Received> calls(MethodDescriptor<?, ?> method) {
+        return received.stream().filter(r -> r.method().equals(method.getFullMethodName())).toList();
+    }
+
+    private ServerServiceDefinition fake(ServiceDescriptor service) {
+        ServerServiceDefinition.Builder definition = ServerServiceDefinition.builder(service);
+        for (MethodDescriptor<?, ?> method : service.getMethods()) {
+            addMethod(definition, method);
+        }
+        return definition.build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void addMethod(
+            ServerServiceDefinition.Builder definition, MethodDescriptor<?, ?> method) {
+        MethodDescriptor<Message, Message> typed = (MethodDescriptor<Message, Message>) method;
+        Message defaultResponse =
+                ((MethodDescriptor.PrototypeMarshaller<Message>) typed.getResponseMarshaller())
+                        .getMessagePrototype();
+        ServerCallHandler<Message, Message> handler =
+                ServerCalls.asyncUnaryCall(
+                        (request, observer) -> {
+                            long deadline =
+                                    Context.current().getDeadline() == null
+                                            ? -1
+                                            : Context.current().getDeadline().timeRemaining(TimeUnit.MILLISECONDS);
+                            received.add(
+                                    new Received(method.getFullMethodName(), HEADERS.get(), request, deadline));
+                            try {
+                                observer.onNext(
+                                        handlers
+                                                .getOrDefault(method.getFullMethodName(), r -> defaultResponse)
+                                                .apply(request));
+                                observer.onCompleted();
+                            } catch (AppException e) {
+                                observer.onError(GrpcErrors.status(e).asRuntimeException(GrpcErrors.trailers(e)));
+                            } catch (StatusRuntimeException e) {
+                                observer.onError(e);
+                            }
+                        });
+        definition.addMethod(ServerMethodDefinition.create(typed, handler));
+    }
+
+    private static final class CaptureHeaders implements ServerInterceptor {
+        @Override
+        public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
+                ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
+            Metadata copy = new Metadata();
+            copy.merge(headers);
+            return Contexts.interceptCall(
+                    Context.current().withValue(HEADERS, copy), call, headers, next);
+        }
+    }
+
     @Override
-    public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
-        ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
-      Metadata copy = new Metadata();
-      copy.merge(headers);
-      return Contexts.interceptCall(
-          Context.current().withValue(HEADERS, copy), call, headers, next);
+    public void close() {
+        server.shutdownNow();
     }
-  }
-
-  @Override
-  public void close() {
-    server.shutdownNow();
-  }
 }

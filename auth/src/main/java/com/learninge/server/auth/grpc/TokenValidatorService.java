@@ -12,38 +12,40 @@ import com.learninge.server.common.grpc.Unary;
 import com.learninge.server.common.security.UserPseudonym;
 import io.grpc.stub.StreamObserver;
 
-/** Edge hỏi token còn hiệu lực không. Mọi lý do hỏng dùng chung một mã lỗi. */
+/**
+ * Edge hỏi token còn hiệu lực không. Mọi lý do hỏng dùng chung một mã lỗi.
+ */
 public final class TokenValidatorService extends TokenValidatorGrpc.TokenValidatorImplBase {
-  private static final int SHA256_BYTES = 32;
+    private static final int SHA256_BYTES = 32;
 
-  private final SessionService sessions;
-  private final UserPseudonym pseudonym;
+    private final SessionService sessions;
+    private final UserPseudonym pseudonym;
 
-  public TokenValidatorService(SessionService sessions, UserPseudonym pseudonym) {
-    this.sessions = sessions;
-    this.pseudonym = pseudonym;
-  }
-
-  @Override
-  public void validateToken(
-      ValidateTokenRequest request, StreamObserver<ValidateTokenResponse> observer) {
-    var token =
-        sessions
-            .validate(requireSha256(request.getTokenSha256()))
-            .orElseThrow(() -> AppException.of(ErrorCode.UNAUTHENTICATED));
-    Unary.reply(
-        observer,
-        ValidateTokenResponse.newBuilder()
-            .setUserId(token.userUuid())
-            .setExpiresAtMs(token.expiresAt())
-            .setUserHmac(pseudonym.of(token.userUuid()))
-            .build());
-  }
-
-  static byte[] requireSha256(ByteString value) {
-    if (value.size() != SHA256_BYTES) {
-      throw AppException.invalid("token_sha256", FieldErrors.INVALID_FORMAT);
+    public TokenValidatorService(SessionService sessions, UserPseudonym pseudonym) {
+        this.sessions = sessions;
+        this.pseudonym = pseudonym;
     }
-    return value.toByteArray();
-  }
+
+    @Override
+    public void validateToken(
+            ValidateTokenRequest request, StreamObserver<ValidateTokenResponse> observer) {
+        var token =
+                sessions
+                        .validate(requireSha256(request.getTokenSha256()))
+                        .orElseThrow(() -> AppException.of(ErrorCode.UNAUTHENTICATED));
+        Unary.reply(
+                observer,
+                ValidateTokenResponse.newBuilder()
+                        .setUserId(token.userUuid())
+                        .setExpiresAtMs(token.expiresAt())
+                        .setUserHmac(pseudonym.of(token.userUuid()))
+                        .build());
+    }
+
+    static byte[] requireSha256(ByteString value) {
+        if (value.size() != SHA256_BYTES) {
+            throw AppException.invalid("token_sha256", FieldErrors.INVALID_FORMAT);
+        }
+        return value.toByteArray();
+    }
 }

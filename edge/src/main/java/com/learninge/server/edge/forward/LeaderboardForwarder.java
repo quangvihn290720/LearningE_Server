@@ -8,23 +8,25 @@ import com.learninge.server.common.grpc.InternalChannels;
 import com.learninge.server.common.grpc.Unary;
 import io.grpc.stub.StreamObserver;
 
-/** EP-13. */
+/**
+ * EP-13.
+ */
 public final class LeaderboardForwarder extends LeaderboardServiceGrpc.LeaderboardServiceImplBase {
-  private final InternalChannels channels;
+    private final InternalChannels channels;
 
-  public LeaderboardForwarder(InternalChannels channels) {
-    this.channels = channels;
-  }
+    public LeaderboardForwarder(InternalChannels channels) {
+        this.channels = channels;
+    }
 
-  @Override
-  public void getWeekly(GetWeeklyRequest request, StreamObserver<GetWeeklyResponse> observer) {
-    Unary.reply(
-        observer,
-        Downstream.call(
-            () ->
-                Downstream.timed(
-                        GamificationBackendGrpc.newBlockingStub(channels.to("gamification")),
-                        RpcDeadlines.DEFAULT)
-                    .getWeekly(request)));
-  }
+    @Override
+    public void getWeekly(GetWeeklyRequest request, StreamObserver<GetWeeklyResponse> observer) {
+        Unary.reply(
+                observer,
+                Downstream.call(
+                        () ->
+                                Downstream.timed(
+                                                GamificationBackendGrpc.newBlockingStub(channels.to("gamification")),
+                                                RpcDeadlines.DEFAULT)
+                                        .getWeekly(request)));
+    }
 }

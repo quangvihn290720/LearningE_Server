@@ -78,7 +78,11 @@ repositories { mavenCentral() }
 spotless {
     java {
         target("*/src/**/*.java")
-        googleJavaFormat(libs.versions.googleJavaFormat.get())
+        // Layout follows IntelliJ IDEA's default formatter (see .editorconfig); this only guards the basics.
+        removeUnusedImports()
+        leadingTabsToSpaces(4)
+        trimTrailingWhitespace()
+        endWithNewline()
     }
 }
 

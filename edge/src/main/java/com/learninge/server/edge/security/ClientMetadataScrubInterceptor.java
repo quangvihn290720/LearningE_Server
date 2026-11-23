@@ -10,22 +10,22 @@ import io.grpc.ServerInterceptor;
  * x-user-id-bin}, {@code x-internal-*}) trước khi bất cứ mã nào đọc tới (TM-33).
  */
 public final class ClientMetadataScrubInterceptor implements ServerInterceptor {
-  private static final String BINARY = Metadata.BINARY_HEADER_SUFFIX;
+    private static final String BINARY = Metadata.BINARY_HEADER_SUFFIX;
 
-  @Override
-  public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
-      ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
-    for (String key : headers.keys()) {
-      if (key.startsWith("x-user-id") || key.startsWith("x-internal-")) {
-        headers.discardAll(key(key));
-      }
+    @Override
+    public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
+            ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
+        for (String key : headers.keys()) {
+            if (key.startsWith("x-user-id") || key.startsWith("x-internal-")) {
+                headers.discardAll(key(key));
+            }
+        }
+        return next.startCall(call, headers);
     }
-    return next.startCall(call, headers);
-  }
 
-  private static Metadata.Key<?> key(String name) {
-    return name.endsWith(BINARY)
-        ? Metadata.Key.of(name, Metadata.BINARY_BYTE_MARSHALLER)
-        : Metadata.Key.of(name, Metadata.ASCII_STRING_MARSHALLER);
-  }
+    private static Metadata.Key<?> key(String name) {
+        return name.endsWith(BINARY)
+                ? Metadata.Key.of(name, Metadata.BINARY_BYTE_MARSHALLER)
+                : Metadata.Key.of(name, Metadata.ASCII_STRING_MARSHALLER);
+    }
 }

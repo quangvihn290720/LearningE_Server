@@ -13,32 +13,34 @@ import com.learninge.server.common.grpc.InternalChannels;
 import com.learninge.server.common.grpc.Unary;
 import io.grpc.stub.StreamObserver;
 
-/** EP-14..EP-16. */
+/**
+ * EP-14..EP-16.
+ */
 public final class ContentForwarder extends ContentServiceGrpc.ContentServiceImplBase {
-  private final InternalChannels channels;
+    private final InternalChannels channels;
 
-  public ContentForwarder(InternalChannels channels) {
-    this.channels = channels;
-  }
+    public ContentForwarder(InternalChannels channels) {
+        this.channels = channels;
+    }
 
-  private ContentBackendBlockingStub content() {
-    return Downstream.timed(
-        ContentBackendGrpc.newBlockingStub(channels.to("content")), RpcDeadlines.DEFAULT);
-  }
+    private ContentBackendBlockingStub content() {
+        return Downstream.timed(
+                ContentBackendGrpc.newBlockingStub(channels.to("content")), RpcDeadlines.DEFAULT);
+    }
 
-  @Override
-  public void getManifest(
-      GetManifestRequest request, StreamObserver<GetManifestResponse> observer) {
-    Unary.reply(observer, Downstream.call(() -> content().getManifest(request)));
-  }
+    @Override
+    public void getManifest(
+            GetManifestRequest request, StreamObserver<GetManifestResponse> observer) {
+        Unary.reply(observer, Downstream.call(() -> content().getManifest(request)));
+    }
 
-  @Override
-  public void getDeck(GetDeckRequest request, StreamObserver<GetDeckResponse> observer) {
-    Unary.reply(observer, Downstream.call(() -> content().getDeck(request)));
-  }
+    @Override
+    public void getDeck(GetDeckRequest request, StreamObserver<GetDeckResponse> observer) {
+        Unary.reply(observer, Downstream.call(() -> content().getDeck(request)));
+    }
 
-  @Override
-  public void getExam(GetExamRequest request, StreamObserver<GetExamResponse> observer) {
-    Unary.reply(observer, Downstream.call(() -> content().getExam(request)));
-  }
+    @Override
+    public void getExam(GetExamRequest request, StreamObserver<GetExamResponse> observer) {
+        Unary.reply(observer, Downstream.call(() -> content().getExam(request)));
+    }
 }
