@@ -1,0 +1,28 @@
+{
+  "bsonType": "object", "additionalProperties": false,
+  "required": ["_id", "title", "question_count", "duration_sec", "sort_order", "version", "updated_at", "questions"],
+  "properties": {
+    "_id": { "bsonType": "string", "pattern": "^[A-Z][0-9]{2}$" },
+    "exam_tag": { "bsonType": ["string", "null"] },
+    "title": { "bsonType": "string", "maxLength": 100 },
+    "part_label": { "bsonType": ["string", "null"] },
+    "description": { "bsonType": ["string", "null"], "maxLength": 300 },
+    "question_count": { "bsonType": "int", "minimum": 1, "maximum": 50 },
+    "duration_sec": { "bsonType": "int", "minimum": 60 },
+    "sort_order": { "bsonType": "int" },
+    "version": { "bsonType": "int", "minimum": 1 },
+    "updated_at": { "bsonType": "date" },
+    "questions": { "bsonType": "array", "minItems": 1, "maxItems": 50, "items": {
+      "bsonType": "object", "additionalProperties": false,
+      "required": ["number", "question", "options", "correct_index"],
+      "properties": {
+        "number": { "bsonType": "int", "minimum": 1 },
+        "passage": { "bsonType": ["string", "null"], "maxLength": 2000 },
+        "question": { "bsonType": "string", "maxLength": 500 },
+        "options": { "bsonType": "array", "minItems": 4, "maxItems": 4, "items": { "bsonType": "string", "maxLength": 200 } },
+        "correct_index": { "bsonType": "int", "minimum": 0, "maximum": 3 },
+        "explanation": { "bsonType": ["string", "null"], "maxLength": 500 },
+        "word_uid": { "bsonType": ["string", "null"], "pattern": "^[A-Z][0-9]{2}-[0-9]{4}$" }
+      } } }
+  }
+}

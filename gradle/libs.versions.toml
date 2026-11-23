@@ -20,6 +20,7 @@ spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-star
 flyway-core = { module = "org.flywaydb:flyway-core" }
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine" }
+jackson-databind = { module = "tools.jackson.core:jackson-databind" }
 grpc-protobuf = { module = "io.grpc:grpc-protobuf" }
 grpc-stub = { module = "io.grpc:grpc-stub" }
 grpc-services = { module = "io.grpc:grpc-services" }

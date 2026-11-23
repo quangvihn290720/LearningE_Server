@@ -1,0 +1,12 @@
+{
+  "bsonType": "object", "additionalProperties": false,
+  "required": ["_id", "type", "source", "occurred_at"],
+  "properties": {
+    "_id": { "bsonType": "string" },
+    "type": { "bsonType": "string", "pattern": "^[a-z_]+\\.[a-z_]+$" },
+    "source": { "enum": ["auth", "sync", "edge"] },
+    "user_hmac": { "bsonType": "string", "pattern": "^[0-9a-f]{32}$" },
+    "occurred_at": { "bsonType": "date" },
+    "attrs": { "bsonType": "object", "additionalProperties": { "bsonType": ["int", "long", "bool", "string"], "maxLength": 40 } }
+  }
+}

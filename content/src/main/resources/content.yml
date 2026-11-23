@@ -1,0 +1,12 @@
+spring:
+  grpc:
+    server:
+      port: ${LISTEN_PORT:50054}
+
+server:
+  port: ${MANAGEMENT_PORT:8084}
+
+learninge:
+  mongo:
+    uri: ${LEARNINGE_MONGO_URI:mongodb://localhost:27017}
+    database: ${LEARNINGE_MONGO_DB:learninge_content}

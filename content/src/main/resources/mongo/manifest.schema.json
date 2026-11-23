@@ -1,0 +1,19 @@
+{
+  "bsonType": "object", "additionalProperties": false,
+  "required": ["_id", "content_version", "languages", "updated_at"],
+  "properties": {
+    "_id": { "enum": ["global"] },
+    "content_version": { "bsonType": "long", "minimum": 1 },
+    "languages": { "bsonType": "array", "maxItems": 10, "items": {
+      "bsonType": "object", "additionalProperties": false,
+      "required": ["code", "name_vi", "tts_locale", "reading_label", "sort_order"],
+      "properties": {
+        "code": { "bsonType": "string", "pattern": "^[a-z]{2}$" },
+        "name_vi": { "bsonType": "string", "maxLength": 40 },
+        "tts_locale": { "bsonType": "string", "maxLength": 10 },
+        "reading_label": { "bsonType": "string", "maxLength": 40 },
+        "sort_order": { "bsonType": "int" }
+      } } },
+    "updated_at": { "bsonType": "date" }
+  }
+}

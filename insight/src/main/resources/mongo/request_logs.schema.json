@@ -1,0 +1,14 @@
+{
+  "bsonType": "object", "additionalProperties": false,
+  "required": ["_id", "request_id", "rpc", "code", "duration_ms", "ts"],
+  "properties": {
+    "_id": { "bsonType": "objectId" },
+    "request_id": { "bsonType": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+    "rpc": { "bsonType": "string", "maxLength": 80 },
+    "code": { "bsonType": "int", "minimum": 0, "maximum": 16 },
+    "duration_ms": { "bsonType": "int", "minimum": 0 },
+    "user_hmac": { "bsonType": "string", "pattern": "^[0-9a-f]{32}$" },
+    "client_version": { "bsonType": "int" },
+    "ts": { "bsonType": "date" }
+  }
+}
