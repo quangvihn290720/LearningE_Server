@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      # Testcontainers dùng Docker có sẵn trên runner để chạy MongoDB thật.
+      - run: ./gradlew build jacocoTestReport
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: test-reports
+          path: |
+            */build/reports/tests
+            */build/reports/jacoco
+
+  compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: bash deploy/gen-env.sh
+      - run: docker compose -f deploy/docker-compose.yml up --build -d --wait --wait-timeout 300
+      - name: Chỉ edge được publish, và chỉ trên loopback
+        run: |
+          published=$(docker compose -f deploy/docker-compose.yml ps --format '{{.Publishers}}' | grep -o '[0-9.]*:[0-9]*->' | sort -u)
+          test "$published" = "127.0.0.1:50051->" || { echo "$published"; exit 1; }
+      - run: docker compose -f deploy/docker-compose.yml run --rm content --ops=import --dir=/content-data
+      - if: failure()
+        run: docker compose -f deploy/docker-compose.yml logs --tail 100
