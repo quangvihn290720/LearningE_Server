@@ -1,0 +1,43 @@
+{
+  "lessons": [
+    {
+      "code": "G01",
+      "title": "Thì hiện tại đơn",
+      "level": "A1",
+      "formula": "S + V(s/es) + O · S + do/does + not + V · Do/Does + S + V?",
+      "usage": "Diễn tả thói quen, sự thật hiển nhiên và lịch trình cố định.",
+      "examples": [
+        { "en": "She drinks coffee every morning.", "vi": "Cô ấy uống cà phê mỗi sáng." },
+        { "en": "The sun rises in the east.", "vi": "Mặt trời mọc ở hướng đông." }
+      ],
+      "common_mistakes": "Quên thêm -s/-es với chủ ngữ ngôi thứ ba số ít (he, she, it).",
+      "source": "Dữ liệu mẫu tự soạn",
+      "questions": [
+        { "question": "She ___ to school by bus.", "options": ["go", "goes", "going", "gone"], "correct_index": 1, "explanation": "Chủ ngữ she → động từ thêm -es: goes." },
+        { "question": "They ___ football on Saturdays.", "options": ["plays", "playing", "play", "played"], "correct_index": 2, "explanation": "Chủ ngữ số nhiều they → động từ nguyên mẫu: play." },
+        { "question": "___ he like milk?", "options": ["Do", "Does", "Is", "Are"], "correct_index": 1, "explanation": "Câu hỏi với he dùng trợ động từ does." },
+        { "question": "I ___ not eat meat.", "options": ["does", "am", "do", "is"], "correct_index": 2, "explanation": "Phủ định với I dùng do not." },
+        { "question": "Water ___ at 100 degrees Celsius.", "options": ["boil", "boils", "boiling", "is boil"], "correct_index": 1, "explanation": "Sự thật hiển nhiên, chủ ngữ số ít → boils." },
+        { "question": "My brother ___ in Hanoi.", "options": ["live", "lives", "living", "are live"], "correct_index": 1, "explanation": "My brother = he → lives." }
+      ]
+    },
+    {
+      "code": "G02",
+      "title": "Động từ to be",
+      "level": "A1",
+      "formula": "I am · He/She/It is · We/You/They are",
+      "usage": "Giới thiệu, mô tả tính chất, trạng thái, nghề nghiệp, vị trí.",
+      "examples": [
+        { "en": "I am a student.", "vi": "Tôi là học sinh." },
+        { "en": "They are at home.", "vi": "Họ đang ở nhà." }
+      ],
+      "common_mistakes": "Dùng is với you hoặc they.",
+      "source": "Dữ liệu mẫu tự soạn",
+      "questions": [
+        { "question": "You ___ my best friend.", "options": ["is", "am", "are", "be"], "correct_index": 2, "explanation": "You đi với are." },
+        { "question": "The cat ___ on the sofa.", "options": ["are", "is", "am", "be"], "correct_index": 1, "explanation": "The cat = it → is." },
+        { "question": "I ___ hungry.", "options": ["am", "is", "are", "be"], "correct_index": 0, "explanation": "I đi với am." }
+      ]
+    }
+  ]
+}

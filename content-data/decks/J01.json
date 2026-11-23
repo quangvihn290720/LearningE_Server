@@ -1,0 +1,22 @@
+{
+  "deck": {
+    "code": "J01",
+    "name": "Tiếng Nhật — Chào hỏi",
+    "name_en": "Japanese Greetings",
+    "description": "Bộ mẫu chứng minh app học được ngôn ngữ khác (DEC-009)",
+    "language": "ja",
+    "icon": null,
+    "level": null,
+    "exam_tag": null,
+    "sort_order": 201
+  },
+  "source": "Dữ liệu mẫu tự soạn cho backend",
+  "words": [
+    { "term": "こんにちは", "reading": "konnichiwa", "pos": "cụm từ", "meaning": "xin chào", "example": "こんにちは、田中さん。", "example_translation": "Xin chào anh Tanaka." },
+    { "term": "ありがとう", "reading": "arigatou", "pos": "cụm từ", "meaning": "cảm ơn", "example": "手伝ってくれてありがとう。", "example_translation": "Cảm ơn bạn đã giúp." },
+    { "term": "ねこ", "reading": "neko", "pos": "danh từ", "meaning": "con mèo", "example": "ねこが好きです。", "example_translation": "Tôi thích mèo." },
+    { "term": "がっこう", "reading": "gakkou", "pos": "danh từ", "meaning": "trường học", "example": "がっこうへ行きます。", "example_translation": "Tôi đi đến trường." },
+    { "term": "みず", "reading": "mizu", "pos": "danh từ", "meaning": "nước", "example": "みずをください。", "example_translation": "Cho tôi xin nước." },
+    { "term": "ともだち", "reading": "tomodachi", "pos": "danh từ", "meaning": "bạn bè", "example": "ともだちと話します。", "example_translation": "Tôi nói chuyện với bạn." }
+  ]
+}

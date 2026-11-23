@@ -1,0 +1,18 @@
+.gradle/
+build/
+.idea/
+*.iml
+.vscode/
+out/
+# secrets and data never leave the machine
+.env
+deploy/.env
+*.db
+*.db-wal
+*.db-shm
+*.bak*
+/data/
+**/data/*.db*
+backup/
+hs_err_pid*
+*.hprof

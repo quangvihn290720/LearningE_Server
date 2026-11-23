@@ -1,0 +1,37 @@
+# Single source of truth for versions. Libraries without a version come from the Spring Boot BOM.
+[versions]
+springBoot = "4.1.2"
+protobufPlugin = "0.10.0"
+protoc = "4.36.2"              # must equal protobuf-java in the Boot BOM
+grpcJava = "1.84.1"            # must equal grpc-java in the Boot BOM
+jacoco = "0.8.16"
+owaspDependencyCheck = "13.0.0"
+spotless = "8.11.0"
+googleJavaFormat = "1.37.0"
+
+[libraries]
+spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "springBoot" }
+spring-boot-starter-grpc-server = { module = "org.springframework.boot:spring-boot-starter-grpc-server" }
+spring-boot-starter-jdbc = { module = "org.springframework.boot:spring-boot-starter-jdbc" }
+spring-boot-starter-mongodb = { module = "org.springframework.boot:spring-boot-starter-mongodb" }
+spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+spring-boot-starter-webflux = { module = "org.springframework.boot:spring-boot-starter-webflux" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+flyway-core = { module = "org.flywaydb:flyway-core" }
+sqlite-jdbc = { module = "org.xerial:sqlite-jdbc" }
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine" }
+grpc-protobuf = { module = "io.grpc:grpc-protobuf" }
+grpc-stub = { module = "io.grpc:grpc-stub" }
+grpc-services = { module = "io.grpc:grpc-services" }
+grpc-netty = { module = "io.grpc:grpc-netty" }
+grpc-inprocess = { module = "io.grpc:grpc-inprocess" }
+protobuf-java = { module = "com.google.protobuf:protobuf-java" }
+testcontainers-mongodb = { module = "org.testcontainers:testcontainers-mongodb" }
+testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
+protobuf = { id = "com.google.protobuf", version.ref = "protobufPlugin" }
+owasp-dependencycheck = { id = "org.owasp.dependencycheck", version.ref = "owaspDependencyCheck" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

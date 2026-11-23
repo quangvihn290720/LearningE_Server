@@ -1,0 +1,49 @@
+syntax = "proto3";
+package learninge.internal.v1;
+option java_multiple_files = true;
+option java_package = "com.learninge.proto.internal.v1";
+option java_outer_classname = "EventsProto";
+
+// Hiện thực bởi: sync (nhận user.deleted), gamification, insight. Relay của auth và sync gọi.
+service EventSink {
+  rpc Publish(PublishRequest) returns (PublishResponse);
+}
+message PublishRequest { repeated Event events = 1; }        // ≤ 200 sự kiện, cùng destination
+message PublishResponse { repeated string acked_event_ids = 1; } // đã xử lý hoặc đã có từ trước
+
+message Event {
+  string event_id = 1;        // UUIDv7, khóa idempotent
+  string type = 2;            // "user.registered" | "user.profile_changed" | "user.deleted"
+                              // | "auth.login_failed" | "auth.locked" | "xp.recorded" | "progress.changed"
+  string aggregate = 3;       // "user" | "xp_event" | "auth"
+  string aggregate_id = 4;
+  int64 created_at_ms = 5;
+  string source = 6;          // "auth" | "sync"
+  string request_id = 7;      // x-request-id của lời gọi sinh ra sự kiện (NFR-O1); rỗng nếu không có
+  oneof payload {
+    UserRegistered user_registered = 10;
+    UserProfileChanged user_profile_changed = 11;
+    UserDeleted user_deleted = 12;
+    AuthLoginFailed auth_login_failed = 13;
+    AuthLocked auth_locked = 14;
+    XpRecorded xp_recorded = 15;
+    ProgressChanged progress_changed = 16;
+  }
+}
+// Payload được cắt theo bên nhận: bản gửi insight KHÔNG đặt user_id, nickname (chỉ user_hmac).
+message UserRegistered { string user_id = 1; string user_hmac = 2; string nickname = 3; int64 created_at_ms = 4; }
+message UserProfileChanged { string user_id = 1; string user_hmac = 2; string nickname = 3; int64 version = 4; }
+message UserDeleted { string user_id = 1; string user_hmac = 2; }
+enum AuthScope { AUTH_SCOPE_UNSPECIFIED = 0; AUTH_SCOPE_LOGIN = 1; AUTH_SCOPE_RESET = 2; }
+message AuthLoginFailed { AuthScope scope = 1; string user_hmac = 2; }   // user_hmac rỗng nếu email không tồn tại
+message AuthLocked { AuthScope scope = 1; int32 lock_level = 2; int32 lock_seconds = 3; string user_hmac = 4; }
+message XpRecorded {
+  string xp_uuid = 1; string user_id = 2; string user_hmac = 3; string source_type = 4;
+  int32 xp_awarded = 5; int64 occurred_at_ms = 6; string local_date = 7; string week_start = 8;
+  int64 server_seq = 9; int64 received_at_ms = 10;
+}
+message ProgressChanged {
+  string user_id = 1; string user_hmac = 2;
+  int32 current_streak = 3; int32 longest_streak = 4; string last_study_date = 5; int64 version = 6;
+  string date = 7; int32 cards = 8; int32 quizzes = 9; int32 exams = 10; int32 records = 11;
+}

@@ -1,0 +1,81 @@
+syntax = "proto3";
+package learninge.internal.v1;
+import "learninge/app/v1/common.proto";
+import "learninge/app/v1/auth.proto";
+import "learninge/app/v1/sync.proto";
+import "learninge/app/v1/leaderboard.proto";
+import "learninge/app/v1/content.proto";
+import "learninge/internal/v1/events.proto";
+option java_multiple_files = true;
+option java_package = "com.learninge.proto.internal.v1";
+option java_outer_classname = "BackendsProto";
+
+service TokenValidator {                                    // auth
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+}
+message ValidateTokenRequest { bytes token_sha256 = 1; }   // đúng 32 byte; token thô không rời edge
+message ValidateTokenResponse { string user_id = 1; int64 expires_at_ms = 2; string user_hmac = 3; }  // sai/hết hạn/thu hồi → UNAUTHENTICATED; user_hmac để edge log/request_logs mà không giữ khóa bút danh
+
+service AuthBackend {                                       // auth; RPC cần user đọc x-user-id
+  rpc Register(learninge.app.v1.RegisterRequest) returns (learninge.app.v1.AuthSession);
+  rpc Login(learninge.app.v1.LoginRequest) returns (learninge.app.v1.AuthSession);
+  rpc Logout(BackendLogoutRequest) returns (learninge.app.v1.LogoutResponse);
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+  rpc UpdateMe(learninge.app.v1.UpdateMeRequest) returns (learninge.app.v1.UpdateMeResponse);
+  rpc ChangePassword(learninge.app.v1.ChangePasswordRequest) returns (learninge.app.v1.ChangePasswordResponse);
+  rpc GetResetQuestion(learninge.app.v1.GetResetQuestionRequest) returns (learninge.app.v1.GetResetQuestionResponse);
+  rpc ResetPassword(learninge.app.v1.ResetPasswordRequest) returns (learninge.app.v1.AuthSession);
+  rpc DeleteAccount(learninge.app.v1.DeleteAccountRequest) returns (learninge.app.v1.DeleteAccountResponse);
+  rpc ExportProfiles(ExportProfilesRequest) returns (ExportProfilesResponse);
+}
+message BackendLogoutRequest { bytes token_sha256 = 1; }
+message GetProfileRequest {}                                // user lấy từ x-user-id
+message GetProfileResponse { learninge.app.v1.User user = 1; }
+message ExportProfilesRequest { int64 after_id = 1; int32 limit = 2; }   // limit ≤ 1000
+message ExportProfilesResponse { repeated PublicProfile profiles = 1; int64 next_after_id = 2; bool has_more = 3; }
+message PublicProfile { string user_id = 1; string nickname = 2; int64 profile_version = 3; }
+
+service SyncBackend {                                       // sync
+  rpc Push(learninge.app.v1.PushRequest) returns (learninge.app.v1.PushResponse);
+  rpc Pull(learninge.app.v1.PullRequest) returns (learninge.app.v1.PullResponse);
+  rpc GetStreak(GetStreakRequest) returns (GetStreakResponse);
+  rpc ExportXpEvents(ExportXpEventsRequest) returns (ExportXpEventsResponse);
+  rpc ExportUserStats(ExportUserStatsRequest) returns (ExportUserStatsResponse);
+}
+message GetStreakRequest {}                                 // user lấy từ x-user-id
+message GetStreakResponse { int64 total_xp = 1; int32 current_streak = 2; int32 longest_streak = 3; string last_study_date = 4; }
+message ExportXpEventsRequest { int64 after_seq = 1; int32 limit = 2; }   // limit ≤ 1000
+message ExportXpEventsResponse { repeated XpRecorded events = 1; int64 next_after_seq = 2; bool has_more = 3; }
+message ExportUserStatsRequest { string after_user_id = 1; int32 limit = 2; }
+message ExportUserStatsResponse { repeated ProgressChanged stats = 1; string next_after_user_id = 2; bool has_more = 3; }
+
+service ContentBackend {                                    // content
+  rpc GetManifest(learninge.app.v1.GetManifestRequest) returns (learninge.app.v1.GetManifestResponse);
+  rpc GetDeck(learninge.app.v1.GetDeckRequest) returns (learninge.app.v1.GetDeckResponse);
+  rpc GetExam(learninge.app.v1.GetExamRequest) returns (learninge.app.v1.GetExamResponse);
+}
+
+service GamificationBackend {                               // gamification
+  rpc GetWeekly(learninge.app.v1.GetWeeklyRequest) returns (learninge.app.v1.GetWeeklyResponse);
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+}
+message GetStatsRequest {}                                  // user lấy từ x-user-id
+message GetStatsResponse { int64 total_xp = 1; int32 week_xp = 2; string week_start = 3; }
+
+service InsightBackend {                                    // insight
+  rpc LogRequests(LogRequestsRequest) returns (LogRequestsResponse);
+  rpc GetDailyStats(GetDailyStatsRequest) returns (GetDailyStatsResponse);
+}
+message LogRequestsRequest { repeated RequestLog logs = 1; }   // ≤ 100
+message LogRequestsResponse { int32 accepted = 1; }
+message RequestLog {
+  string request_id = 1; string rpc = 2; int32 code = 3; int32 duration_ms = 4;
+  string user_hmac = 5; int32 client_version = 6; int64 ts_ms = 7;   // không IP, không metadata authorization
+}
+message GetDailyStatsRequest { string from_date = 1; string to_date = 2; }   // ≤ 92 ngày
+message GetDailyStatsResponse { repeated DailyStats days = 1; }
+message DailyStats {
+  string date = 1; int32 dau = 2; int32 new_users = 3; int32 cards_reviewed = 4; int64 xp_total = 5;
+  int32 quiz_count = 6; int32 exam_count = 7; int32 push_count = 8; int32 push_records = 9;
+  int32 login_failed = 10; int32 locks = 11;
+}

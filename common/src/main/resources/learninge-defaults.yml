@@ -1,0 +1,68 @@
+# Cấu hình chung; mỗi dịch vụ có <tên>.yml đè lên. Không đặt giá trị bí mật ở đây.
+spring:
+  main:
+    banner-mode: "off"
+    web-application-type: reactive   # chỉ để Actuator nghe loopback
+    log-startup-info: false
+  jmx:
+    enabled: false
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  autoconfigure:
+    # SQLite, Flyway và MongoDB được dựng tường minh trong mã của từng dịch vụ.
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
+      - org.springframework.boot.mongodb.autoconfigure.MongoAutoConfiguration
+      - org.springframework.boot.mongodb.autoconfigure.MongoReactiveAutoConfiguration
+      - org.springframework.boot.mongodb.autoconfigure.health.MongoHealthContributorAutoConfiguration
+      - org.springframework.boot.mongodb.autoconfigure.health.MongoReactiveHealthContributorAutoConfiguration
+  grpc:
+    server:
+      address: ${LISTEN_HOST:127.0.0.1}
+      inbound:
+        message:
+          max-size: 4MB
+        metadata:
+          max-size: 16KB
+      keepalive:
+        time: 60s
+        timeout: 20s
+        permit:
+          time: 30s
+        connection:
+          max-idle-time: 5m
+      reflection:
+        enabled: false
+      health:
+        schedule:
+          delay: 0s
+          period: 1s
+      shutdown:
+        grace-period: 10s
+
+server:
+  address: 127.0.0.1
+  port: ${MANAGEMENT_PORT:8081}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: "*"
+
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
+
+learninge:
+  env: ${APP_ENV:dev}
+  internal-token: ${LEARNINGE_INTERNAL_TOKEN}
