@@ -12,7 +12,7 @@ import org.testcontainers.mongodb.MongoDBContainer;
  * MongoDB thật trong container, dùng chung cho cả lượt test; mỗi test một database riêng.
  */
 public final class TestMongo {
-    private static final MongoDBContainer CONTAINER = new MongoDBContainer("mongo:8.0.34");
+    private static final MongoDBContainer CONTAINER = new MongoDBContainer("mongo:8.0.38");
     private static final MongoClient CLIENT;
 
     static {

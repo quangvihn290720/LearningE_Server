@@ -49,6 +49,7 @@ Dịch vụ không phụ thuộc nhau, chỉ gọi qua stub. Không Lombok, JPA,
 | I-20 | `request_id` trong payload sự kiện (TC-SVC-09) chưa có trường | Thêm `Event.request_id = 7` (gói nội bộ, chỉ cộng thêm) |
 | I-21 | Google Java Style (chờ duyệt KG-8) | Theo yêu cầu: định dạng mặc định IntelliJ (Ctrl+Alt+L) |
 | I-22 | Schema Mongo trùng tên giữa dịch vụ ở chế độ gộp | Thư mục riêng `mongo/<dịch vụ>/` (lỗi do test đầu-cuối phát hiện) |
+| I-23 | `mongo:8.0.34` không chạy trên kernel ≥ 6.19 (SERVER-121912) | Ghim 8.0.38 theo digest, ngoại lệ quy tắc ≥ 2 tuần |
 
 **Chưa làm:** seed tài khoản demo (`LEARNINGE_DEMO_SEED`), `grammar.json` (tính năng Won't), chốt nơi triển khai (DEC-023).
 
