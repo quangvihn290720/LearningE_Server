@@ -103,6 +103,15 @@ public final class TestService implements AutoCloseable {
     return assertFails(call, code.status(), code);
   }
 
+  /** Thiếu hoặc sai khóa nội bộ: UNAUTHENTICATED, không có bất kỳ chi tiết nào. */
+  public static void assertInternalTokenRequired(ThrowingCallable call) {
+    StatusRuntimeException error =
+        Assertions.catchThrowableOfType(StatusRuntimeException.class, call);
+    Assertions.assertThat(error).as("lời gọi phải thất bại").isNotNull();
+    Assertions.assertThat(error.getStatus().getCode()).isEqualTo(Status.Code.UNAUTHENTICATED);
+    Assertions.assertThat(error.getTrailers().containsKey(MetadataKeys.ERROR_CODE)).isFalse();
+  }
+
   @Override
   public void close() {
     channel.shutdownNow();

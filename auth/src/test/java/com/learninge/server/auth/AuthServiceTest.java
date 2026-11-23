@@ -539,16 +539,14 @@ class AuthServiceTest {
 
   @Test
   void everyInternalRpcNeedsTheInternalToken() {
-    assertFails(
+    TestService.assertInternalTokenRequired(
         () ->
             AuthBackendGrpc.newBlockingStub(service.anonymous())
-                .exportProfiles(ExportProfilesRequest.getDefaultInstance()),
-        ErrorCode.UNAUTHENTICATED);
-    assertFails(
+                .exportProfiles(ExportProfilesRequest.getDefaultInstance()));
+    TestService.assertInternalTokenRequired(
         () ->
             AuthBackendGrpc.newBlockingStub(service.with(MetadataKeys.INTERNAL_AUTH, "wrong-token"))
-                .exportProfiles(ExportProfilesRequest.getDefaultInstance()),
-        ErrorCode.UNAUTHENTICATED);
+                .exportProfiles(ExportProfilesRequest.getDefaultInstance()));
   }
 
   @Test

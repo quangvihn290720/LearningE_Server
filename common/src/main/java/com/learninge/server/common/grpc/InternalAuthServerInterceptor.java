@@ -1,8 +1,6 @@
 package com.learninge.server.common.grpc;
 
 import com.learninge.server.common.config.Secret;
-import com.learninge.server.common.error.AppException;
-import com.learninge.server.common.error.ErrorCode;
 import com.learninge.server.common.id.Uuids;
 import com.learninge.server.common.security.Digests;
 import io.grpc.Context;
@@ -12,6 +10,7 @@ import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
+import io.grpc.Status;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import org.slf4j.Logger;
@@ -45,7 +44,9 @@ public final class InternalAuthServerInterceptor implements ServerInterceptor {
           "Từ chối lời gọi nội bộ {} từ {}",
           rpc,
           call.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR));
-      return GrpcErrors.reject(call, AppException.of(ErrorCode.UNAUTHENTICATED, "Không có quyền"));
+      // Không có error-code: edge phân biệt được "sai khóa nội bộ" với "token người dùng hỏng".
+      call.close(Status.UNAUTHENTICATED, new Metadata());
+      return new ServerCall.Listener<>() {};
     }
     String userId = headers.get(MetadataKeys.USER_ID);
     if (userId == null || !Uuids.isCanonical(userId)) {

@@ -205,11 +205,10 @@ class InsightServiceTest {
 
   @Test
   void everyRpcNeedsTheInternalToken() {
-    assertFails(
+    TestService.assertInternalTokenRequired(
         () ->
             InsightBackendGrpc.newBlockingStub(service.anonymous())
-                .getDailyStats(GetDailyStatsRequest.getDefaultInstance()),
-        ErrorCode.UNAUTHENTICATED);
+                .getDailyStats(GetDailyStatsRequest.getDefaultInstance()));
   }
 
   @Test

@@ -682,10 +682,9 @@ class SyncServiceTest {
                 .getStatsList())
         .extracting(s -> s.getUserId())
         .containsExactly(A, B);
-    assertFails(
+    TestService.assertInternalTokenRequired(
         () ->
             SyncBackendGrpc.newBlockingStub(service.anonymous())
-                .exportXpEvents(ExportXpEventsRequest.getDefaultInstance()),
-        ErrorCode.UNAUTHENTICATED);
+                .exportXpEvents(ExportXpEventsRequest.getDefaultInstance()));
   }
 }

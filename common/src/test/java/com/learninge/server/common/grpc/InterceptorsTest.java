@@ -100,10 +100,9 @@ class InterceptorsTest {
         requestId(),
         errors());
     for (String bad : List.of("x", "", TestService.INTERNAL_TOKEN + "x")) {
-      TestService.assertFails(
-          () -> call(headers(MetadataKeys.INTERNAL_AUTH, bad)), ErrorCode.UNAUTHENTICATED);
+      TestService.assertInternalTokenRequired(() -> call(headers(MetadataKeys.INTERNAL_AUTH, bad)));
     }
-    TestService.assertFails(() -> call(new Metadata()), ErrorCode.UNAUTHENTICATED);
+    TestService.assertInternalTokenRequired(() -> call(new Metadata()));
     assertThat(handled).hasValue(0);
 
     call(headers(MetadataKeys.INTERNAL_AUTH, TestService.INTERNAL_TOKEN));

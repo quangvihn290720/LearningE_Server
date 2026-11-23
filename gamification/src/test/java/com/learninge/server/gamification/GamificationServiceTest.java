@@ -307,10 +307,9 @@ class GamificationServiceTest {
             EventSinkGrpc.newBlockingStub(service.internal())
                 .publish(PublishRequest.newBuilder().addAllEvents(List.of(many)).build()),
         ErrorCode.VALIDATION_ERROR);
-    assertFails(
+    TestService.assertInternalTokenRequired(
         () ->
             EventSinkGrpc.newBlockingStub(service.anonymous())
-                .publish(PublishRequest.getDefaultInstance()),
-        ErrorCode.UNAUTHENTICATED);
+                .publish(PublishRequest.getDefaultInstance()));
   }
 }

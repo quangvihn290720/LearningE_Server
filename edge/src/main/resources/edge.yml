@@ -1,0 +1,29 @@
+spring:
+  grpc:
+    server:
+      port: ${LISTEN_PORT:50051}
+      inbound:
+        message:
+          max-size: 1MB
+      reflection:
+        enabled: ${LEARNINGE_GRPC_REFLECTION:false}
+      health:
+        enabled: false     # EdgeHealth tự công bố trạng thái theo dịch vụ phía sau
+
+server:
+  port: ${MANAGEMENT_PORT:8081}
+
+learninge:
+  grpc-threads: 80         # 64 lời gọi đang xử lý + chỗ cho lời gọi đang chờ và Health
+  services:
+    auth: ${AUTH_ADDR:localhost:50052}
+    sync: ${SYNC_ADDR:localhost:50053}
+    content: ${CONTENT_ADDR:localhost:50054}
+    gamification: ${GAMIFICATION_ADDR:localhost:50055}
+    insight: ${INSIGHT_ADDR:localhost:50056}
+  edge:
+    trust-proxy: ${EDGE_TRUST_PROXY:false}
+    trusted-proxies: ${EDGE_TRUSTED_PROXIES:127.0.0.0/8,::1/128}
+    min-client: ${EDGE_MIN_CLIENT:1}
+    token-cache-secs: ${EDGE_TOKEN_CACHE_SECS:60}
+    reflection: ${LEARNINGE_GRPC_REFLECTION:false}
