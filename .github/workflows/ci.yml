@@ -46,7 +46,7 @@ jobs:
       - run: docker compose -f deploy/docker-compose.yml up --build -d --wait --wait-timeout 300
       - name: Chỉ edge được publish, và chỉ trên loopback
         run: |
-          published=$(docker compose -f deploy/docker-compose.yml ps --format '{{.Publishers}}' | grep -o '[0-9.]*:[0-9]*->' | sort -u)
+          published=$(docker ps --filter label=com.docker.compose.project=learninge --format '{{.Ports}}' | grep -oE '[^ ,]+->' | sort -u)
           test "$published" = "127.0.0.1:50051->" || { echo "$published"; exit 1; }
       - run: docker compose -f deploy/docker-compose.yml run --rm content --ops=import --dir=/content-data
       - if: failure()
