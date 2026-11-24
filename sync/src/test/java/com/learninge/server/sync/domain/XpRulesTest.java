@@ -48,6 +48,12 @@ class XpRulesTest {
     }
 
     @Test
+    void unknownSourcesEarnNothing() {
+        assertThat(xp(XpSourceType.XP_SOURCE_TYPE_UNSPECIFIED, 0, 0)).isZero();
+        assertThat(xp(XpSourceType.XP_SOURCE_TYPE_UNSPECIFIED, 1, 0)).isZero();
+    }
+
+    @Test
     void acceptsSevenDaysBackToFiveMinutesAhead() {
         long week = Duration.ofDays(7).toMillis();
         long five = Duration.ofMinutes(5).toMillis();
