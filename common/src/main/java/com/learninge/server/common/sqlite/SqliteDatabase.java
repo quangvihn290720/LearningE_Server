@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
 
@@ -23,6 +24,9 @@ import org.sqlite.SQLiteDataSource;
  *
  * <p>WAL cho phép đọc song song với ghi; một kết nối ghi tuần tự hóa mọi thay đổi nên không có
  * {@code SQLITE_BUSY} giữa các luồng của chính dịch vụ.
+ *
+ * <p>{@code synchronous = FULL}: app đánh dấu "đã đồng bộ" ngay khi nhận trả lời, nên giao dịch đã
+ * commit không được mất khi máy mất điện.
  */
 public final class SqliteDatabase implements AutoCloseable {
     private static final int BUSY_TIMEOUT_MS = 5000;
@@ -34,8 +38,10 @@ public final class SqliteDatabase implements AutoCloseable {
     private final JdbcClient reader;
     private final TransactionTemplate writeTx;
     private final TransactionTemplate readTx;
+    private final DataSource direct;
 
     private SqliteDatabase(Path file) {
+        direct = source(file, SQLiteConfig.TransactionMode.DEFERRED);
         writerSource = pool("writer", source(file, SQLiteConfig.TransactionMode.IMMEDIATE), 1, null);
         readerSource =
                 pool(
@@ -96,8 +102,33 @@ public final class SqliteDatabase implements AutoCloseable {
         return readTx.execute(status -> work.get());
     }
 
+    /**
+     * Kết nối riêng nên dịch vụ vẫn ghi được trong lúc chép. Chép ra tệp tạm, kiểm rồi mới đổi tên:
+     * tệp mang tên đích luôn là bản đủ và đọc được.
+     */
     public void backupTo(Path target) {
-        vacuumInto(writer, target);
+        Path partial = target.resolveSibling(target.getFileName() + ".part");
+        vacuumInto(JdbcClient.create(direct), partial);
+        verify(partial);
+        try {
+            Files.move(partial, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * Ném lỗi nếu tệp không phải SQLite hoặc đã hỏng; chỉ đọc, không tạo tệp phụ.
+     */
+    public static void verify(Path file) {
+        if (!Files.isRegularFile(file)) {
+            throw new IllegalArgumentException("Không có tệp " + file);
+        }
+        SQLiteConfig config = new SQLiteConfig();
+        config.setReadOnly(true);
+        SQLiteDataSource source = new SQLiteDataSource(config);
+        source.setUrl("jdbc:sqlite:" + file.toAbsolutePath());
+        quickCheck(source, file);
     }
 
     @Override
@@ -109,7 +140,7 @@ public final class SqliteDatabase implements AutoCloseable {
     private static SQLiteDataSource source(Path file, SQLiteConfig.TransactionMode mode) {
         SQLiteConfig config = new SQLiteConfig();
         config.setJournalMode(SQLiteConfig.JournalMode.WAL);
-        config.setSynchronous(SQLiteConfig.SynchronousMode.NORMAL);
+        config.setSynchronous(SQLiteConfig.SynchronousMode.FULL);
         config.setBusyTimeout(BUSY_TIMEOUT_MS);
         config.setTransactionMode(mode);
         // sqlite-jdbc tắt khóa ngoại mặc định; phải bật trên từng kết nối (TM-27).

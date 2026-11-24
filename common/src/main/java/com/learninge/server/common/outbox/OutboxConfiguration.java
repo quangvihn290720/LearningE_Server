@@ -3,6 +3,7 @@ package com.learninge.server.common.outbox;
 import com.learninge.server.common.config.LearningeProperties;
 import com.learninge.server.common.grpc.InternalChannels;
 import com.learninge.server.common.ops.BackgroundTasks;
+import com.learninge.server.common.ops.OpsCommand;
 import com.learninge.server.common.sqlite.SqliteDatabase;
 
 import java.time.Clock;
@@ -76,6 +77,16 @@ public class OutboxConfiguration {
     @Bean
     OutboxRequeueCommand outboxRequeueCommand(OutboxStore store, Clock clock) {
         return new OutboxRequeueCommand(store, clock);
+    }
+
+    @Bean
+    OutboxReplayCommand outboxReplayCommand(OutboxStore store, Clock clock) {
+        return new OutboxReplayCommand(store, clock);
+    }
+
+    @Bean
+    OutboxListCommand outboxListCommand(OutboxStore store, Clock clock) {
+        return new OutboxListCommand(store, clock, OpsCommand.stdout());
     }
 
     private static void scheduleHousekeeping(

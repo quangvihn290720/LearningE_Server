@@ -1,5 +1,10 @@
 package com.learninge.server.common.ops;
 
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+
 import org.springframework.boot.ApplicationArguments;
 
 /**
@@ -9,6 +14,13 @@ public interface OpsCommand {
     String name();
 
     void run(ApplicationArguments arguments) throws Exception;
+
+    /**
+     * Nơi in kết quả; luôn UTF-8 dù máy dùng bảng mã khác.
+     */
+    static PrintStream stdout() {
+        return new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
+    }
 
     /**
      * Tham số bắt buộc dạng {@code --name=value}.

@@ -19,13 +19,13 @@ public final class SqliteErrors {
         if (error instanceof CannotCreateTransactionException) {
             return AppException.busy();
         }
+        return isBusy(error) ? AppException.busy() : null;
+    }
+
+    public static boolean isBusy(RuntimeException error) {
         SQLiteException sqlite = find(error);
-        if (sqlite == null) {
-            return null;
-        }
-        SQLiteErrorCode code = sqlite.getResultCode();
-        boolean busy = (code.code & 0xff) == SQLiteErrorCode.SQLITE_BUSY.code;
-        return busy ? AppException.busy() : null;
+        return sqlite != null
+                && (sqlite.getResultCode().code & 0xff) == SQLiteErrorCode.SQLITE_BUSY.code;
     }
 
     /**
