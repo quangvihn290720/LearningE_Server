@@ -6,7 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.learninge.proto.app.v1.ContentWord;
 import com.learninge.proto.app.v1.GetDeckRequest;
+import com.learninge.proto.app.v1.GetDecksRequest;
 import com.learninge.proto.app.v1.GetExamRequest;
+import com.learninge.proto.app.v1.GetExamsRequest;
 import com.learninge.proto.app.v1.GetManifestRequest;
 import com.learninge.proto.app.v1.GetManifestResponse;
 import com.learninge.proto.app.v1.ManifestItem;
@@ -22,6 +24,8 @@ import com.mongodb.client.MongoDatabase;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
@@ -106,6 +110,42 @@ class ContentServiceTest {
     }
 
     @Test
+    void servesSeveralDecksOrExamsInOneCall() {
+        importer.importFrom(dir);
+        var decks =
+                content()
+                        .getDecks(
+                                GetDecksRequest.newBuilder().addAllCodes(List.of("X01", "Z99", "T01")).build())
+                        .getDecksList();
+        assertThat(decks).extracting(d -> d.getDeck().getCode()).containsExactly("X01", "T01");
+        assertThat(decks.get(1)).isEqualTo(content().getDeck(GetDeckRequest.newBuilder().setCode("T01").build()));
+        assertThat(content().getExams(GetExamsRequest.newBuilder().addCodes("E01").build()).getExams(0))
+                .isEqualTo(content().getExam(GetExamRequest.newBuilder().setCode("E01").build()));
+        for (List<String> bad :
+                List.of(
+                        List.<String>of(),
+                        List.of("T01", "T01"),
+                        List.of("t1"),
+                        IntStream.range(10, 21).mapToObj(i -> "T" + i).toList())) {
+            assertFails(
+                    () -> content().getDecks(GetDecksRequest.newBuilder().addAllCodes(bad).build()),
+                    ErrorCode.VALIDATION_ERROR);
+        }
+    }
+
+    @Test
+    void codesMayHaveThreeDigits() throws IOException {
+        for (String file : List.of("decks/T12.json", "exams.json")) {
+            Path path = dir.resolve(file);
+            Files.writeString(path, Files.readString(path).replace("T12", "T112").replace("E01", "E101"));
+        }
+        assertThat(importer.importFrom(dir).changed()).contains("T112", "E101");
+        assertThat(
+                content().getDeck(GetDeckRequest.newBuilder().setCode("T112").build()).getWords(0).getUid())
+                .isEqualTo("T112-0001");
+    }
+
+    @Test
     void importingAgainChangesNothing() {
         importer.importFrom(dir);
         var second = importer.importFrom(dir);
@@ -186,7 +226,7 @@ class ContentServiceTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "../x", "t01", "T1", "T001", "{\"$ne\":\"\"}", "T01\n"})
+    @ValueSource(strings = {"", "../x", "t01", "T1", "T0001", "{\"$ne\":\"\"}", "T01\n"})
     void badCodesAreInvalid(String code) {
         assertFails(
                 () -> content().getDeck(GetDeckRequest.newBuilder().setCode(code).build()),

@@ -110,7 +110,7 @@ public final class ContentTool {
     }
 
     private void create(String code, Path csv) throws IOException {
-        if (!code.matches("[A-Z][0-9]{2}") || Files.exists(deckPath(code))) {
+        if (!code.matches("[A-Z][0-9]{2,3}") || Files.exists(deckPath(code))) {
             throw new IllegalArgumentException(code + ": mã phải dạng T16 và chưa có");
         }
         ContentBundle bundle = ContentReader.read(directory);

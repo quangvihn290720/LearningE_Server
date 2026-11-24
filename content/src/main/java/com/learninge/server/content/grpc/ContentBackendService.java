@@ -6,8 +6,12 @@ import com.learninge.proto.app.v1.ContentWord;
 import com.learninge.proto.app.v1.ExamQuestion;
 import com.learninge.proto.app.v1.GetDeckRequest;
 import com.learninge.proto.app.v1.GetDeckResponse;
+import com.learninge.proto.app.v1.GetDecksRequest;
+import com.learninge.proto.app.v1.GetDecksResponse;
 import com.learninge.proto.app.v1.GetExamRequest;
 import com.learninge.proto.app.v1.GetExamResponse;
+import com.learninge.proto.app.v1.GetExamsRequest;
+import com.learninge.proto.app.v1.GetExamsResponse;
 import com.learninge.proto.app.v1.GetManifestRequest;
 import com.learninge.proto.app.v1.GetManifestResponse;
 import com.learninge.proto.app.v1.Language;
@@ -22,6 +26,7 @@ import io.grpc.stub.StreamObserver;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
@@ -31,7 +36,9 @@ import org.bson.Document;
  * EP-14..EP-16.
  */
 public final class ContentBackendService extends ContentBackendGrpc.ContentBackendImplBase {
-    private static final Pattern CODE = Pattern.compile("[A-Z][0-9]{2}");
+    private static final Pattern CODE = Pattern.compile("[A-Z][0-9]{2,3}");
+
+    private static final int MAX_CODES = 10;
 
     private final ContentStore store;
 
@@ -62,19 +69,60 @@ public final class ContentBackendService extends ContentBackendGrpc.ContentBacke
     @Override
     public void getDeck(GetDeckRequest request, StreamObserver<GetDeckResponse> observer) {
         String code = requireCode(request.getCode());
-        Document deck = store.deck(code).orElseThrow(() -> AppException.of(ErrorCode.NOT_FOUND));
-        GetDeckResponse.Builder response = GetDeckResponse.newBuilder().setDeck(deck(deck));
-        store.words(code).forEach(w -> response.addWords(word(w)));
+        Unary.reply(observer, findDeck(code).orElseThrow(() -> AppException.of(ErrorCode.NOT_FOUND)));
+    }
+
+    @Override
+    public void getDecks(GetDecksRequest request, StreamObserver<GetDecksResponse> observer) {
+        GetDecksResponse.Builder response = GetDecksResponse.newBuilder();
+        requireCodes(request.getCodesList()).forEach(c -> findDeck(c).ifPresent(response::addDecks));
         Unary.reply(observer, response.build());
+    }
+
+    @Override
+    public void getExams(GetExamsRequest request, StreamObserver<GetExamsResponse> observer) {
+        GetExamsResponse.Builder response = GetExamsResponse.newBuilder();
+        requireCodes(request.getCodesList()).forEach(c -> findExam(c).ifPresent(response::addExams));
+        Unary.reply(observer, response.build());
+    }
+
+    private Optional<GetDeckResponse> findDeck(String code) {
+        return store
+                .deck(code)
+                .map(
+                        d -> {
+                            GetDeckResponse.Builder response = GetDeckResponse.newBuilder().setDeck(deck(d));
+                            store.words(code).forEach(w -> response.addWords(word(w)));
+                            return response.build();
+                        });
+    }
+
+    private Optional<GetExamResponse> findExam(String code) {
+        return store
+                .exam(code)
+                .map(
+                        d -> {
+                            GetExamResponse.Builder response = GetExamResponse.newBuilder().setExam(exam(d));
+                            d.getList("questions", Document.class).forEach(q -> response.addQuestions(question(q)));
+                            return response.build();
+                        });
     }
 
     @Override
     public void getExam(GetExamRequest request, StreamObserver<GetExamResponse> observer) {
         String code = requireCode(request.getCode());
-        Document exam = store.exam(code).orElseThrow(() -> AppException.of(ErrorCode.NOT_FOUND));
-        GetExamResponse.Builder response = GetExamResponse.newBuilder().setExam(exam(exam));
-        exam.getList("questions", Document.class).forEach(q -> response.addQuestions(question(q)));
-        Unary.reply(observer, response.build());
+        Unary.reply(observer, findExam(code).orElseThrow(() -> AppException.of(ErrorCode.NOT_FOUND)));
+    }
+
+    /**
+     * Bộ 1.000 từ khoảng 200 KB (NFR-N7) nên mười bộ vẫn dưới trần 4 MiB của một phản hồi.
+     */
+    private static List<String> requireCodes(List<String> codes) {
+        if (codes.isEmpty() || codes.size() > MAX_CODES || Set.copyOf(codes).size() != codes.size()) {
+            throw AppException.invalid("codes", FieldErrors.OUT_OF_RANGE);
+        }
+        codes.forEach(ContentBackendService::requireCode);
+        return codes;
     }
 
     private static String requireCode(String code) {
