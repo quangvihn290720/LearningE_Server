@@ -216,6 +216,7 @@ class RecordRulesTest {
         assertThat(exam(b -> b.setStartedAtMs(0))).isFalse();
         assertThat(exam(b -> b.setSubmittedAtMs(4))).isFalse();
         assertThat(RecordRules.testCode("E01")).isTrue();
+        assertThat(RecordRules.testCode("E100")).isTrue();
         assertThat(RecordRules.testCode("e1")).isFalse();
     }
 
@@ -236,6 +237,8 @@ class RecordRulesTest {
     void wordIds() {
         assertThat(RecordRules.wordUid("T01-0007")).isTrue();
         assertThat(RecordRules.wordUid(UUID)).isTrue();
+        assertThat(RecordRules.wordUid("T100-0001")).isTrue();
+        assertThat(RecordRules.wordUid("T1000-0001")).isFalse();
         assertThat(RecordRules.wordUid("T1-7")).isFalse();
         assertThat(RecordRules.isUserWord("T01-0007")).isFalse();
     }

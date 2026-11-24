@@ -26,8 +26,8 @@ import java.util.regex.Pattern;
  */
 public final class RecordRules {
     private static final Pattern LANGUAGE = Pattern.compile("[a-z]{2}");
-    private static final Pattern CONTENT_WORD = Pattern.compile("[A-Z][0-9]{2}-[0-9]{4}");
-    private static final Pattern TEST_CODE = Pattern.compile("[A-Z][0-9]{2}");
+    private static final Pattern CONTENT_WORD = Pattern.compile("[A-Z][0-9]{2,3}-[0-9]{4}");
+    private static final Pattern TEST_CODE = Pattern.compile("[A-Z][0-9]{2,3}");
     private static final Set<Integer> DAILY_GOALS = Set.of(5, 10, 15, 20);
     private static final int MAX_XP_COUNT = 200;
 

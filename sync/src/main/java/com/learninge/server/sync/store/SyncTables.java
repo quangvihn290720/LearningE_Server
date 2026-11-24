@@ -13,6 +13,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
  * Chín bảng đồng bộ, bộ đếm {@code server_seq} và danh sách người dùng đã xóa.
  */
 public final class SyncTables {
+    private static final long SEQ_JUMP = 1_000_000_000L;
+
     public final SettingsTable settings = new SettingsTable();
     public final DeckTable decks = new DeckTable();
     public final WordTable words = new WordTable();
@@ -56,6 +58,21 @@ public final class SyncTables {
                 .sql("UPDATE sync_seq SET value = value + 1 WHERE id = 1 RETURNING value")
                 .query(Long.class)
                 .single();
+    }
+
+    public long epoch(JdbcClient client) {
+        return client.sql("SELECT epoch FROM sync_seq WHERE id = 1").query(Long.class).single();
+    }
+
+    /**
+     * Sau khi khôi phục: máy người dùng có thể giữ mốc cao hơn số thứ tự của bản sao lưu. Nhảy qua mọi
+     * mốc đã cấp thì không thay đổi mới nào bị bỏ sót; kỷ nguyên mới báo app đẩy lại dữ liệu của mình.
+     */
+    public void startNewEpoch() {
+        writer()
+                .sql("UPDATE sync_seq SET value = value + ?, epoch = epoch + 1 WHERE id = 1")
+                .param(SEQ_JUMP)
+                .update();
     }
 
     /**

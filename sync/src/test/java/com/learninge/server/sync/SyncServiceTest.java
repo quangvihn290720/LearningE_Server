@@ -35,7 +35,10 @@ import com.learninge.proto.internal.v1.UserDeleted;
 import com.learninge.proto.internal.v1.UserRegistered;
 import com.learninge.server.common.error.ErrorCode;
 import com.learninge.server.common.id.UuidV5;
+import com.learninge.server.common.ops.ServiceLauncher;
+import com.learninge.server.common.sqlite.SqliteBackups;
 import com.learninge.server.common.sqlite.SqliteDatabase;
+import com.learninge.server.common.sqlite.SqliteRestore;
 import com.learninge.server.common.testing.MutableClock;
 import com.learninge.server.common.testing.TestService;
 
@@ -53,6 +56,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.boot.DefaultApplicationArguments;
 
 /**
  * TC-SRV-15..30: dịch vụ sync thật, SQLite thật, gọi qua gRPC.
@@ -691,5 +695,44 @@ class SyncServiceTest {
                 () ->
                         SyncBackendGrpc.newBlockingStub(service.anonymous())
                                 .exportXpEvents(ExportXpEventsRequest.getDefaultInstance()));
+    }
+
+    /**
+     * Khôi phục từ bản cũ: số thứ tự nhảy qua mọi mốc đã cấp, nếu không máy đã kéo tới mốc cao hơn sẽ
+     * không bao giờ thấy thay đổi mới.
+     */
+    @Test
+    void restoringABackupNeverHidesNewChangesFromDevices() {
+        push(A, card("T01-0001", 1, clock.millis()));
+        Path backup =
+                service.bean(SqliteBackups.class).backup(dir.resolve("backup"));
+        push(A, card("T01-0002", 1, clock.millis()), card("T01-0003", 1, clock.millis()));
+        PullResponse before = pull(A, 0, 0);
+        service.close();
+
+        String[] args = {
+                "--ops=restore",
+                "--from=" + backup,
+                "--learninge.sync.db-path=" + dir.resolve("sync.db"),
+                "--learninge.internal-token=" + TestService.INTERNAL_TOKEN
+        };
+        try (var ops = ServiceLauncher.start(SyncApplication.class, "sync", builder -> {
+        }, args)) {
+            ops.getBean(SqliteRestore.class).run(new DefaultApplicationArguments(args));
+        }
+        service =
+                TestService.start(
+                        SyncApplication.class,
+                        "sync",
+                        clock,
+                        "--learninge.sync.db-path=" + dir.resolve("sync.db"),
+                        "--learninge.background-enabled=false");
+        db = service.bean(SqliteDatabase.class);
+
+        assertThat(pull(A, 0, 0).getChangesCount()).isEqualTo(1);
+        push(A, card("T01-0009", 1, clock.millis()));
+        PullResponse after = pull(A, before.getNextCursor(), 0);
+        assertThat(after.getChangesList()).extracting(Change::getRecordId).containsExactly("T01-0009");
+        assertThat(after.getDataEpoch()).isEqualTo(before.getDataEpoch() + 1);
     }
 }

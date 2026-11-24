@@ -3,15 +3,13 @@ package com.learninge.server.sync;
 import com.learninge.server.common.config.InternalServerConfiguration;
 import com.learninge.server.common.config.LearningeProperties;
 import com.learninge.server.common.config.SecretKeys;
-import com.learninge.server.common.grpc.ErrorMappingInterceptor;
 import com.learninge.server.common.outbox.OutboxConfiguration;
 import com.learninge.server.common.outbox.OutboxConfiguration.EventSource;
 import com.learninge.server.common.outbox.OutboxWriter;
 import com.learninge.server.common.security.UserPseudonym;
-import com.learninge.server.common.sqlite.SqliteBackupCommand;
+import com.learninge.server.common.sqlite.SqliteConfiguration;
 import com.learninge.server.common.sqlite.SqliteDatabase;
-import com.learninge.server.common.sqlite.SqliteErrors;
-import com.learninge.server.common.sqlite.SqliteHealthIndicator;
+import com.learninge.server.common.sqlite.SqliteRestore;
 import com.learninge.server.sync.grpc.SyncBackendService;
 import com.learninge.server.sync.grpc.SyncEventSink;
 import com.learninge.server.sync.service.PullService;
@@ -24,6 +22,7 @@ import com.learninge.server.sync.store.UserStatsStore;
 
 import java.time.Clock;
 
+import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -34,22 +33,14 @@ import org.springframework.context.annotation.Import;
  */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(SyncProperties.class)
-@Import({InternalServerConfiguration.class, OutboxConfiguration.class})
+@Import({InternalServerConfiguration.class, SqliteConfiguration.class, OutboxConfiguration.class})
 public class SyncServiceConfig {
 
     @Bean
-    SqliteDatabase database(SyncProperties properties) {
+    SqliteDatabase database(
+            SyncProperties properties, ApplicationArguments arguments, Clock clock) {
+        SqliteRestore.replaceIfRequested(arguments, properties.dbPath(), clock);
         return SqliteDatabase.open(properties.dbPath(), "db/migration/sync");
-    }
-
-    @Bean
-    SqliteHealthIndicator sqliteHealthIndicator(SqliteDatabase database) {
-        return new SqliteHealthIndicator(database);
-    }
-
-    @Bean
-    ErrorMappingInterceptor.Translator sqliteErrorTranslator() {
-        return SqliteErrors::translate;
     }
 
     @Bean
@@ -57,9 +48,12 @@ public class SyncServiceConfig {
         return new EventSource(SyncApplication.NAME);
     }
 
+    /**
+     * Số thứ tự của bản sao lưu bị lùi so với máy người dùng: nhảy lên và báo kỷ nguyên mới.
+     */
     @Bean
-    SqliteBackupCommand backupCommand(SqliteDatabase database, Clock clock) {
-        return new SqliteBackupCommand(database, SyncApplication.NAME, clock);
+    SqliteRestore restoreCommand(SqliteDatabase database, SyncTables tables) {
+        return new SqliteRestore(database, () -> tables.startNewEpoch());
     }
 
     @Bean
