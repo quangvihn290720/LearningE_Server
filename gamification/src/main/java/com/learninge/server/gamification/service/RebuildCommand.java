@@ -13,7 +13,9 @@ import com.learninge.server.common.mongo.MongoSchema;
 import com.learninge.server.common.ops.OpsCommand;
 import com.learninge.server.gamification.store.XpEventStore.XpEvent;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -23,6 +25,9 @@ import org.springframework.boot.ApplicationArguments;
 /**
  * {@code --ops=rebuild}: dựng lại toàn bộ kho từ nguồn sự thật (auth.db, sync.db). Chạy được khi
  * dịch vụ đang nhận sự kiện mới, vì mọi thao tác đều idempotent và chỉ tăng.
+ *
+ * <p>{@code --clean}: xóa kho trước khi dựng, dùng sau khi khôi phục auth hoặc sync từ bản sao lưu (kho
+ * có thể còn người hoặc XP không có trong bản đó). Dấu "đã xóa tài khoản" luôn được giữ.
  */
 public final class RebuildCommand implements OpsCommand {
     private static final Logger log = LoggerFactory.getLogger(RebuildCommand.class);
@@ -49,11 +54,16 @@ public final class RebuildCommand implements OpsCommand {
 
     @Override
     public void run(ApplicationArguments arguments) {
-        rebuild();
+        rebuild(arguments.containsOption("clean"));
     }
 
-    public void rebuild() {
+    public void rebuild(boolean clean) {
         schema.apply(database);
+        if (clean) {
+            for (String collection : List.of("xp_events", "weekly_xp", "user_stats")) {
+                database.getCollection(collection).deleteMany(Filters.empty());
+            }
+        }
         int profiles = loadProfiles();
         int streaks = loadStreaks();
         int events = loadXpEvents();

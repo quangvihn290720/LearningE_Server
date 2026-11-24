@@ -229,4 +229,35 @@ class InsightServiceTest {
                 .findFirst()
                 .orElseThrow();
     }
+
+    @Test
+    void reportSummarisesDaysAndRpcsWithoutUserData() {
+        for (int i = 0; i < 20; i++) {
+            database.getCollection("request_logs")
+                    .insertOne(
+                            new Document("request_id", "r" + i)
+                                    .append("rpc", "learninge.app.v1.SyncService/Push")
+                                    .append("code", i == 0 ? 14 : i == 1 ? 16 : 0)
+                                    .append("duration_ms", 10 + i)
+                                    .append("user_hmac", U)
+                                    .append("ts", new java.util.Date()));
+        }
+        database.getCollection("analytics_daily")
+                .insertOne(
+                        new Document("_id", "2026-11-12")
+                                .append("dau", 7)
+                                .append("xp_total", 1234L)
+                                .append("updated_at", new java.util.Date()));
+        var bytes = new java.io.ByteArrayOutputStream();
+        new com.learninge.server.insight.service.ReportCommand(
+                service.bean(com.learninge.server.insight.store.AnalyticsStore.class),
+                service.bean(com.learninge.server.insight.store.AuditStore.class),
+                clock,
+                new java.io.PrintStream(bytes, true, java.nio.charset.StandardCharsets.UTF_8))
+                .run(new org.springframework.boot.DefaultApplicationArguments("--days=7"));
+        assertThat(bytes.toString(java.nio.charset.StandardCharsets.UTF_8))
+                .contains("<td>2026-11-12</td><td>7</td>", "<td>1234</td>")
+                .contains("SyncService/Push</td><td>20</td><td>1</td><td>1</td>", "<td>29</td></tr>")
+                .doesNotContain(U, "<script");
+    }
 }

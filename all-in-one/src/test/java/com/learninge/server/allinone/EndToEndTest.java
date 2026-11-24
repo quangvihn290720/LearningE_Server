@@ -303,8 +303,17 @@ class EndToEndTest {
                             server.bean("gamification", GameUpdates.class),
                             server.bean("gamification", MongoSchema.class),
                             game);
-            rebuild.rebuild();
-            rebuild.rebuild();
+            rebuild.rebuild(false);
+            rebuild.rebuild(false);
+            assertThat(leaderboard(token).getEntriesList()).isEqualTo(before.getEntriesList());
+
+            // Người không còn trong auth/sync (vd sau khôi phục) chỉ biến mất khi dựng lại từ đầu.
+            server.bean("gamification", GameUpdates.class)
+                    .nicknameChanged("99999999-0000-4000-8000-000000000009", "ghost", 1);
+            rebuild.rebuild(false);
+            assertThat(game.getCollection("user_stats").countDocuments()).isEqualTo(2);
+            rebuild.rebuild(true);
+            assertThat(game.getCollection("user_stats").countDocuments()).isEqualTo(1);
         }
         assertThat(leaderboard(token).getEntriesList()).isEqualTo(before.getEntriesList());
     }

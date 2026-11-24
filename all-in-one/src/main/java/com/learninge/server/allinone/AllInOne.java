@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.springframework.context.ConfigurableApplicationContext;
@@ -65,9 +66,7 @@ public final class AllInOne implements AutoCloseable {
 
     public static AllInOne start(List<String> services, boolean randomPorts, String... extra) {
         for (String service : services) {
-            if (!APPLICATIONS.containsKey(service)) {
-                throw new IllegalArgumentException("Không có dịch vụ " + service);
-            }
+            application(service);
         }
         AllInOne running = new AllInOne();
         List<String> shared = sharedArguments(extra);
@@ -92,13 +91,31 @@ public final class AllInOne implements AutoCloseable {
             // Trên LAN chỉ edge được phép nghe ngoài loopback (TM-13).
             args.add("--spring.grpc.server.address=127.0.0.1");
         }
+        args.addAll(mongoArguments(service));
         ports()
                 .forEach((name, port) -> args.add("--learninge.services." + name + "=127.0.0.1:" + port));
         contexts.put(
                 service,
                 ServiceLauncher.start(
-                        APPLICATIONS.get(service), service, builder -> {
+                        application(service), service, builder -> {
                         }, args.toArray(String[]::new)));
+    }
+
+    /**
+     * Mỗi dịch vụ có user MongoDB riêng, như chế độ tách: {@code CONTENT_MONGO_URI},
+     * {@code GAMIFICATION_MONGO_URI}, {@code INSIGHT_MONGO_URI}. Không đặt thì dùng chung một URI.
+     */
+    static List<String> mongoArguments(String service) {
+        String uri = System.getenv(service.toUpperCase(Locale.ROOT) + "_MONGO_URI");
+        return uri == null || uri.isBlank() ? List.of() : List.of("--learninge.mongo.uri=" + uri);
+    }
+
+    static Class<?> application(String service) {
+        Class<?> application = APPLICATIONS.get(service);
+        if (application == null) {
+            throw new IllegalArgumentException("Không có dịch vụ " + service);
+        }
+        return application;
     }
 
     /**

@@ -21,6 +21,9 @@ learninge:
     content: ${CONTENT_ADDR:localhost:50054}
     gamification: ${GAMIFICATION_ADDR:localhost:50055}
     insight: ${INSIGHT_ADDR:localhost:50056}
+  demo:                    # chỉ cho --ops=demo-seed
+    seed: ${LEARNINGE_DEMO_SEED:false}
+    password: ${LEARNINGE_DEMO_PASSWORD:}
   edge:
     trust-proxy: ${EDGE_TRUST_PROXY:false}
     trusted-proxies: ${EDGE_TRUSTED_PROXIES:127.0.0.0/8,::1/128}

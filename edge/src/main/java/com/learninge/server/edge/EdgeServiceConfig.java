@@ -19,6 +19,8 @@ import com.learninge.server.edge.forward.RpcDeadlines;
 import com.learninge.server.edge.forward.SyncForwarder;
 import com.learninge.server.edge.health.EdgeHealth;
 import com.learninge.server.edge.log.RequestLogShipper;
+import com.learninge.server.edge.ops.DemoProperties;
+import com.learninge.server.edge.ops.DemoSeedCommand;
 import com.learninge.server.edge.security.AuthenticationInterceptor;
 import com.learninge.server.edge.security.ClientIpResolver;
 import com.learninge.server.edge.security.ClientMetadataScrubInterceptor;
@@ -48,7 +50,7 @@ import org.springframework.grpc.server.GlobalServerInterceptor;
  * Dây nối của edge. Các interceptor xếp theo thứ tự chạy, từ ngoài vào trong.
  */
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(EdgeProperties.class)
+@EnableConfigurationProperties({EdgeProperties.class, DemoProperties.class})
 @Import(CommonConfiguration.class)
 public class EdgeServiceConfig {
     private static final int MAX_CONCURRENT = 64;
@@ -178,6 +180,12 @@ public class EdgeServiceConfig {
     @Bean
     HealthIndicator coreHealthIndicator(EdgeHealth health) {
         return health::indicator;
+    }
+
+    @Bean
+    DemoSeedCommand demoSeedCommand(
+            InternalChannels channels, DemoProperties demo, LearningeProperties common, Clock clock) {
+        return new DemoSeedCommand(channels, demo, common.env(), clock);
     }
 
     // --- Chuyển tiếp ------------------------------------------------------------------------------
