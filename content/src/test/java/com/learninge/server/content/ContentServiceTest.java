@@ -142,6 +142,34 @@ class ContentServiceTest {
     }
 
     @Test
+    void retiredItemsStayServedSoTheAppCanHideThem() throws IOException {
+        importer.importFrom(dir);
+        edit("decks/T01.json", "\"version\": 1", "\"version\": 2, \"retired\": true");
+        edit("exams.json", "\"version\": 1", "\"version\": 2, \"retired\": true");
+        assertThat(importer.importFrom(dir).changed()).containsExactly("T01", "E01");
+        assertThat(importer.importFrom(dir).changed()).isEmpty();
+
+        var deck = content().getDeck(GetDeckRequest.newBuilder().setCode("T01").build());
+        assertThat(deck.getDeck().getRetired()).isTrue();
+        // App cũ coi bộ không có từ là trả lời hỏng, nên từ vẫn phải có.
+        assertThat(deck.getWordsList()).noneMatch(ContentWord::getDeleted);
+        var exam = content().getExam(GetExamRequest.newBuilder().setCode("E01").build());
+        assertThat(exam.getExam().getRetired()).isTrue();
+
+        edit("decks/T01.json", "\"version\": 2, \"retired\": true", "\"version\": 3");
+        importer.importFrom(dir);
+        assertThat(content().getDeck(GetDeckRequest.newBuilder().setCode("T01").build()).getDeck().getRetired())
+                .isFalse();
+    }
+
+    @Test
+    void aDeckThatDisappearedFromTheFilesIsAnError() throws IOException {
+        importer.importFrom(dir);
+        Files.delete(dir.resolve("decks/J01.json"));
+        assertThatThrownBy(() -> importer.importFrom(dir)).hasMessageContaining("J01: đã từng nạp");
+    }
+
+    @Test
     void invalidContentIsRejectedBeforeAnythingIsWritten() throws IOException {
         edit("decks/X01.json", "X01-0002", "X01-0001");
         edit("exams.json", "\"correct_index\": 0", "\"correct_index\": 7");

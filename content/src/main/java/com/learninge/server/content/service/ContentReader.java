@@ -21,7 +21,7 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Đọc {@code languages.json}, {@code exams.json}, {@code decks/*.json}; trường lạ là lỗi.
  */
-final class ContentReader {
+public final class ContentReader {
     private static final JsonMapper JSON =
             JsonMapper.builder()
                     .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
@@ -31,7 +31,7 @@ final class ContentReader {
     private ContentReader() {
     }
 
-    static ContentBundle read(Path directory) {
+    public static ContentBundle read(Path directory) {
         List<Language> languages =
                 JSON.readValue(text(directory.resolve("languages.json")), new TypeReference<>() {
                 });

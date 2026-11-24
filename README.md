@@ -106,7 +106,7 @@ $C run --rm auth --ops=outbox-requeue --event-id=<id>       # cho sự kiện "c
 $C logs -f edge                                             # log JSON, lọc theo request_id
 ```
 
-Sửa nội dung trong `content-data/` phải **tăng `version`** của bộ/đề, nếu không lệnh import báo lỗi và không ghi gì.
+Thêm, sửa, xóa nội dung học: xem [docs/NOI-DUNG-HOC.md](docs/NOI-DUNG-HOC.md).
 
 Trước mỗi lần đổi lược đồ SQLite, dịch vụ tự tạo `<file>.bak-<phiên bản>`. Hoàn tác = dừng dịch vụ, chép file đó lại.
 
@@ -115,5 +115,5 @@ Trước mỗi lần đổi lược đồ SQLite, dịch vụ tự tạo `<file>
   động trên Linux kernel ≥ 6.19 (SERVER-121912), kernel của máy CI GitHub hiện nay.
 - Một bản edge duy nhất: cache token và bộ đếm tần suất nằm trong bộ nhớ.
 - Nơi triển khai (DEC-023) chưa chốt; TLS kết thúc ở lớp phía trước edge.
-- `content-data/` là dữ liệu mẫu nhỏ, chờ bộ chính thức.
+- T01, X01, J01, E01 trong `content-data/` còn là dữ liệu mẫu, chờ bộ chính thức.
 - Chưa làm seed tài khoản demo (`LEARNINGE_DEMO_SEED`).

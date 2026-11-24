@@ -23,6 +23,9 @@
 Trong v1 chỉ **thêm**: trường số mới, RPC mới, giá trị enum mới. Không đổi số, kiểu, tên, nghĩa. Xóa thì `reserved`.
 Sau khi merge, đồng bộ sang repo app bằng `tools/sync-proto.ps1` ở repo app.
 
+## Đổi nội dung học
+Theo [docs/NOI-DUNG-HOC.md](docs/NOI-DUNG-HOC.md); commit `content.lock` cùng nội dung.
+
 ## Đổi lược đồ
 - SQLite: thêm tệp `V00N__mo_ta.sql`, **không sửa** tệp đã chạy.
 - MongoDB: sửa `resources/mongo/<dịch vụ>/<collection>.schema.json`; đổi kiểu dữ liệu cũ thì thêm bước chuyển đổi.
