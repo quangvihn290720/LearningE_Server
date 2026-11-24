@@ -21,7 +21,8 @@ dựng lại được (nội dung, bảng xếp hạng, số liệu).
       └───────┴─ outbox ┴──────────┘   sự kiện: giao ít nhất một lần, bên nhận khử trùng
 ```
 
-Muốn hiểu code: đọc [docs/GIAI-THICH-CODE.md](docs/GIAI-THICH-CODE.md). Quy ước làm việc: [CONTRIBUTING.md](CONTRIBUTING.md).
+Muốn hiểu code: đọc [docs/GIAI-THICH-CODE.md](docs/GIAI-THICH-CODE.md). Triển khai, sao lưu, theo dõi:
+[docs/VAN-HANH.md](docs/VAN-HANH.md). Quy ước làm việc: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Chạy nhanh
 
@@ -91,17 +92,24 @@ Quan trọng nhất:
 | `AUTH_DB_PATH`, `SYNC_DB_PATH` | auth, sync | phải nằm trên volume bền vững |
 | `LISTEN_HOST`, `LISTEN_PORT` | cả 6 | mặc định loopback |
 | `EDGE_TRUST_PROXY`, `EDGE_TRUSTED_PROXIES`, `EDGE_CLIENT_IP_HEADER` | edge | **bắt buộc bật khi đứng sau proxy/tunnel**, nếu không mọi người dùng chung một IP và chặn lẫn nhau; header phải là header proxy đó tự ghi |
+| `LEARNINGE_BACKUP_DIR` | auth, sync | nơi sao lưu tự động; rỗng = tắt |
+| `TOKEN_TTL_DAYS`, `TOKEN_MAX_AGE_DAYS` | auth | 30 ngày không dùng, tối đa 180 ngày |
+| `EDGE_DOMAIN` | Caddy | chỉ với `docker-compose.tls.yml` |
 | `APP_ENV` | cả 6 | `dev` hoặc `prod` |
 
 ## Vận hành
 
-Chạy bằng chính image của dịch vụ, không mở cổng:
+Đầy đủ ở [docs/VAN-HANH.md](docs/VAN-HANH.md). Chạy bằng chính image của dịch vụ, không mở cổng:
 
 ```bash
 C="docker compose -f deploy/docker-compose.yml"
 $C run --rm content --ops=import --dir=/content-data        # nạp nội dung
 $C run --rm gamification --ops=rebuild                      # dựng lại bảng xếp hạng từ SQLite
-$C run --rm auth --ops=backup --out=/data/backup            # sao lưu auth.db (tương tự sync)
+$C run --rm gamification --ops=rebuild --clean              # như trên, xóa kho trước (sau khi khôi phục)
+$C run --rm auth --ops=backup --out=/backup                 # sao lưu ngay (mỗi ngày tự sao lưu một lần)
+$C run --rm --no-deps sync --ops=restore --from=/backup/…   # khôi phục (dừng dịch vụ trước)
+$C run --rm -T insight --ops=report > report.html           # số liệu ngày và từng RPC
+$C run --rm -T sync --ops=outbox-list                       # hàng đợi và sự kiện "chết"
 $C run --rm auth --ops=outbox-requeue --event-id=<id>       # cho sự kiện "chết" chạy lại
 $C logs -f edge                                             # log JSON, lọc theo request_id
 ```
@@ -117,6 +125,6 @@ Hàng đợi sự kiện đứng thì log có `outbox_retry` (mỗi phút một 
 - MongoDB ghim 8.0.38 (20/11/2026), ngoại lệ của quy tắc phát hành ≥ 2 tuần: bản 8.0.34 trong tài liệu không khởi
   động trên Linux kernel ≥ 6.19 (SERVER-121912), kernel của máy CI GitHub hiện nay.
 - Một bản edge duy nhất: cache token và bộ đếm tần suất nằm trong bộ nhớ.
-- Nơi triển khai (DEC-023) chưa chốt; TLS kết thúc ở lớp phía trước edge.
+- Nơi triển khai (DEC-023) chưa chốt; đã có sẵn cách chạy với TLS (Caddy) và chế độ gộp cho VPS 2 GB.
 - T01, X01, J01, E01 trong `content-data/` còn là dữ liệu mẫu, chờ bộ chính thức.
-- Chưa làm seed tài khoản demo (`LEARNINGE_DEMO_SEED`).
+- App chưa đọc `data_epoch`, chưa có màn quản lý phiên đăng nhập, chưa gọi `GetDecks`/`GetExams`.
