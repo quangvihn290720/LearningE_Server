@@ -27,6 +27,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -79,9 +80,10 @@ public final class PushService {
         PushResponse.Builder response = PushResponse.newBuilder().setServerTimeMs(now);
         List<ScoredXp> xp = new ArrayList<>();
         Map<Change.DataCase, Integer> applied = new EnumMap<>(Change.DataCase.class);
+        Map<LocalDate, Integer> xpByDay = new HashMap<>();
         for (int i = 0; i < changes.size(); i++) {
             Change change = changes.get(i);
-            Outcome outcome = records.write(userId, change, now);
+            Outcome outcome = records.write(userId, change, now, xpByDay);
             if (outcome instanceof Applied a) {
                 applied.merge(change.getDataCase(), 1, Integer::sum);
                 if (a.xp() != null) {

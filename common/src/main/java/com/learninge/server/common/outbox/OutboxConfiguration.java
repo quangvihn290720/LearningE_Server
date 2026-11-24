@@ -26,6 +26,7 @@ import org.springframework.context.annotation.Configuration;
 public class OutboxConfiguration {
     private static final Logger log = LoggerFactory.getLogger(OutboxConfiguration.class);
     private static final long BACKLOG_WARNING = 10_000;
+    private static final Duration STUCK_WARNING = Duration.ofMinutes(5);
 
     /**
      * Tên dịch vụ phát ({@code auth} hoặc {@code sync}); quyết định relay phục vụ đích nào.
@@ -83,14 +84,19 @@ public class OutboxConfiguration {
                 "outbox-cleanup",
                 Duration.ofHours(1),
                 () -> store.deletePublishedBefore(clock.millis() - retention.toMillis()));
-        tasks.every("outbox-backlog", Duration.ofMinutes(1), () -> warnBacklog(store));
+        tasks.every("outbox-backlog", Duration.ofMinutes(1), () -> warnBacklog(store, clock));
     }
 
-    private static void warnBacklog(OutboxStore store) {
+    private static void warnBacklog(OutboxStore store, Clock clock) {
         for (Destination destination : Destination.values()) {
             long pending = store.countPending(destination);
-            if (pending > BACKLOG_WARNING) {
-                log.warn("outbox_pending destination={} count={}", destination.id(), pending);
+            long ageMillis = store.oldestPending(destination).map(at -> clock.millis() - at).orElse(0L);
+            if (pending > BACKLOG_WARNING || ageMillis > STUCK_WARNING.toMillis()) {
+                log.warn(
+                        "outbox_pending destination={} count={} oldest_seconds={}",
+                        destination.id(),
+                        pending,
+                        ageMillis / 1000);
             }
         }
     }

@@ -24,6 +24,7 @@ import com.learninge.server.edge.security.ClientIpResolver;
 import com.learninge.server.edge.security.ClientMetadataScrubInterceptor;
 import com.learninge.server.edge.security.ClientVersionInterceptor;
 import com.learninge.server.edge.security.IpRateLimitInterceptor;
+import com.learninge.server.edge.security.PayloadLimitInterceptor;
 import com.learninge.server.edge.security.TokenAuthenticator;
 import com.learninge.server.edge.security.TokenRateLimitInterceptor;
 import io.grpc.BindableService;
@@ -33,6 +34,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.concurrent.ScheduledExecutorService;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.context.annotation.Bean;
@@ -50,10 +53,14 @@ import org.springframework.grpc.server.GlobalServerInterceptor;
 public class EdgeServiceConfig {
     private static final int MAX_CONCURRENT = 64;
     private static final Duration MAX_QUEUE_WAIT = Duration.ofSeconds(2);
+    private static final Logger log = LoggerFactory.getLogger(EdgeServiceConfig.class);
 
     public EdgeServiceConfig(EdgeProperties edge, LearningeProperties common) {
         if (edge.reflection() && common.env() == AppEnv.PROD) {
             throw new IllegalStateException("LEARNINGE_GRPC_REFLECTION chỉ được bật khi APP_ENV=dev");
+        }
+        if (common.env() == AppEnv.PROD && !edge.trustProxy()) {
+            log.warn("EDGE_TRUST_PROXY=false: nếu đứng sau proxy thì mọi người dùng bị tính chung một IP");
         }
     }
 
@@ -96,16 +103,16 @@ public class EdgeServiceConfig {
     @Bean
     @Order(InterceptorOrder.IP_RATE_LIMIT)
     @GlobalServerInterceptor
-    IpRateLimitInterceptor ipRateLimitInterceptor(EdgeProperties edge, Clock clock) {
-        return new IpRateLimitInterceptor(
-                new ClientIpResolver(edge.trustProxy(), edge.trustedProxies()), clock);
+    IpRateLimitInterceptor ipRateLimitInterceptor(ClientIpResolver ips, Clock clock) {
+        return new IpRateLimitInterceptor(ips, clock);
     }
 
     @Bean
     @Order(InterceptorOrder.AUTHENTICATION)
     @GlobalServerInterceptor
-    AuthenticationInterceptor authenticationInterceptor(TokenAuthenticator tokens) {
-        return new AuthenticationInterceptor(tokens);
+    AuthenticationInterceptor authenticationInterceptor(
+            TokenAuthenticator tokens, ClientIpResolver ips) {
+        return new AuthenticationInterceptor(tokens, ips);
     }
 
     @Bean
@@ -113,6 +120,13 @@ public class EdgeServiceConfig {
     @GlobalServerInterceptor
     TokenRateLimitInterceptor tokenRateLimitInterceptor(Clock clock) {
         return new TokenRateLimitInterceptor(clock);
+    }
+
+    @Bean
+    @Order(InterceptorOrder.PAYLOAD_LIMIT)
+    @GlobalServerInterceptor
+    PayloadLimitInterceptor payloadLimitInterceptor() {
+        return new PayloadLimitInterceptor();
     }
 
     @Bean
@@ -130,6 +144,12 @@ public class EdgeServiceConfig {
     }
 
     // --- Thành phần -------------------------------------------------------------------------------
+
+    @Bean
+    ClientIpResolver clientIpResolver(EdgeProperties edge) {
+        return new ClientIpResolver(
+                edge.trustProxy(), edge.trustedProxies(), edge.clientIpHeader());
+    }
 
     @Bean
     TokenAuthenticator tokenAuthenticator(

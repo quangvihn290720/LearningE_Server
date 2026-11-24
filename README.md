@@ -62,7 +62,7 @@ grpcurl -plaintext -H 'x-client-version: 1' -H 'authorization: Bearer <token>' \
 ./gradlew build                    # biên dịch, định dạng, toàn bộ test (cần Docker cho MongoDB)
 ./gradlew :sync:test               # một dịch vụ
 ./gradlew spotlessApply            # bỏ import thừa, khoảng trắng cuối dòng
-./gradlew jacocoTestReport         # độ phủ: */build/reports/jacoco
+./gradlew jacocoTestReport         # độ phủ: */build/reports/jacoco (build chặn khi gói domain < 80% nhánh)
 ./gradlew dependencyCheckAggregate # quét lỗ hổng, cần biến NVD_API_KEY
 ```
 
@@ -90,7 +90,7 @@ Quan trọng nhất:
 | `LEARNINGE_MONGO_URI`, `LEARNINGE_MONGO_DB` | content, gamification, insight | mỗi dịch vụ chỉ có user của mình |
 | `AUTH_DB_PATH`, `SYNC_DB_PATH` | auth, sync | phải nằm trên volume bền vững |
 | `LISTEN_HOST`, `LISTEN_PORT` | cả 6 | mặc định loopback |
-| `EDGE_TRUST_PROXY`, `EDGE_TRUSTED_PROXIES` | edge | chỉ bật khi đứng sau proxy/tunnel |
+| `EDGE_TRUST_PROXY`, `EDGE_TRUSTED_PROXIES`, `EDGE_CLIENT_IP_HEADER` | edge | **bắt buộc bật khi đứng sau proxy/tunnel**, nếu không mọi người dùng chung một IP và chặn lẫn nhau; header phải là header proxy đó tự ghi |
 | `APP_ENV` | cả 6 | `dev` hoặc `prod` |
 
 ## Vận hành
@@ -109,6 +109,9 @@ $C logs -f edge                                             # log JSON, lọc th
 Thêm, sửa, xóa nội dung học: xem [docs/NOI-DUNG-HOC.md](docs/NOI-DUNG-HOC.md).
 
 Trước mỗi lần đổi lược đồ SQLite, dịch vụ tự tạo `<file>.bak-<phiên bản>`. Hoàn tác = dừng dịch vụ, chép file đó lại.
+
+Hàng đợi sự kiện đứng thì log có `outbox_retry` (mỗi phút một dòng) và `outbox_pending` (chờ quá 5 phút hoặc quá
+10.000 dòng). Log mỗi container tối đa 30 MB.
 
 ## Giới hạn đã biết
 - MongoDB ghim 8.0.38 (20/11/2026), ngoại lệ của quy tắc phát hành ≥ 2 tuần: bản 8.0.34 trong tài liệu không khởi

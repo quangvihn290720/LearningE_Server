@@ -204,6 +204,60 @@ class GamificationServiceTest {
         assertThat(stats.getTotalXp()).isEqualTo(810);
     }
 
+    /**
+     * Lỗi đo được 24/11/2026: mỗi sự kiện đọc lại toàn bộ XP của người đó, nên một người có vài nghìn
+     * sự kiện làm lô vượt hạn 3 giây và hàng đợi của mọi người đứng mãi.
+     */
+    @Test
+    void aHeavyPlayerDoesNotStallTheQueue() {
+        List<Document> history =
+                IntStream.range(0, 20_000)
+                        .mapToObj(
+                                i ->
+                                        new Document("_id", UUID.randomUUID().toString())
+                                                .append("user_id", A)
+                                                .append("source_type", "QUIZ")
+                                                .append("xp_awarded", 0)
+                                                .append("occurred_at", new java.util.Date(1))
+                                                .append("received_at", new java.util.Date(1))
+                                                .append("local_date", "2026-11-12")
+                                                .append("week_start", "2026-11-09")
+                                                .append("server_seq", 1L)
+                                                .append("event_id", "e"))
+                        .toList();
+        database.getCollection("xp_events").insertMany(history);
+        Event[] batch =
+                IntStream.range(0, 200)
+                        .mapToObj(i -> xp(A, 1, "2026-11-12T02:00:00Z").build())
+                        .toArray(Event[]::new);
+        int acked = 0;
+        for (int round = 0; round < 5 && acked < batch.length; round++) {
+            acked +=
+                    EventSinkGrpc.newBlockingStub(service.internal())
+                            .withDeadlineAfter(3, java.util.concurrent.TimeUnit.SECONDS)
+                            .publish(
+                                    PublishRequest.newBuilder()
+                                            .addAllEvents(List.of(batch).subList(acked, batch.length))
+                                            .build())
+                            .getAckedEventIdsCount();
+        }
+        assertThat(acked).isEqualTo(batch.length);
+        assertThat(weekly(A).getMe().getXp()).isEqualTo(200);
+    }
+
+    @Test
+    void replacesTheIndexOfTheFirstRelease() {
+        var events = database.getCollection("xp_events");
+        events.createIndex(
+                new Document("user_id", 1).append("week_start", 1).append("local_date", 1),
+                new com.mongodb.client.model.IndexOptions().name("ix_xp_user_week"));
+        service.bean(MongoSchema.class).apply(database);
+        assertThat(events.listIndexes().into(new ArrayList<>()))
+                .extracting(d -> d.getString("name"))
+                .contains("ix_xp_user_totals")
+                .doesNotContain("ix_xp_user_week");
+    }
+
     @Test
     void weekBoundaryFollowsVietnamTime() {
         publish(

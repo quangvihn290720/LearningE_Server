@@ -71,6 +71,22 @@ subprojects {
         dependsOn(tasks.named("test"))
         reports { xml.required = true }
     }
+
+    // NFR-M2: business rules (the pure `domain` packages) keep at least 80% branch coverage.
+    val coverage = tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+        dependsOn(tasks.named("test"))
+        violationRules {
+            rule {
+                element = "PACKAGE"
+                includes = listOf("com.learninge.server.*.domain")
+                limit {
+                    counter = "BRANCH"
+                    minimum = "0.80".toBigDecimal()
+                }
+            }
+        }
+    }
+    tasks.named("check") { dependsOn(coverage) }
 }
 
 repositories { mavenCentral() }

@@ -34,6 +34,7 @@ khác. Lùi 2, 4, 8, 15 s; đích sống lại thì xả ngay. Sự kiện bị 
 
 ## 3. `auth` — tài khoản
 - **Mật khẩu**: PBKDF2 120.000 vòng, salt riêng (`PasswordHasher`), tối đa 4 phép băm cùng lúc để không bị làm cạn CPU.
+  Riêng `auth` bật C2 (`JDK_JAVA_OPTIONS` trong compose): băm khoảng 30 ms thay vì 270 ms.
 - **Token**: 32 byte ngẫu nhiên; DB chỉ giữ SHA-256. Mất DB cũng không có token dùng được.
 - **Khóa tăng dần** (`LockState`, hàm thuần): sai 5 lần khóa 60 s, gấp đôi tới 1 giờ.
 - **Chống dò email** (`CredentialGuard`, `EmailKeys`): email không tồn tại vẫn băm, vẫn đếm, vẫn khóa, vẫn có câu hỏi bảo mật
@@ -61,6 +62,8 @@ khác. Lùi 2, 4, 8, 15 s; đích sống lại thì xả ngay. Sự kiện bị 
 
 ## 6. `edge` — cổng vào
 - **Mặc định cần token** (`AppMethods`): RPC mới không tự thành công khai; test sinh từ proto kiểm điều này.
+- **Token sai quá 60 lần/phút/IP** thì edge không hỏi auth nữa; người đã có trong cache không bị ảnh hưởng.
+- **Gói quá 1 MiB** (`PayloadLimitInterceptor`): tầng vận chuyển cho tới 2 MiB để edge kịp trả `PAYLOAD_TOO_LARGE`.
 - **Cache token 60 s** (`TokenAuthenticator`): khóa là SHA-256. Đăng xuất/đổi mật khẩu/xóa tài khoản xóa cache ngay. Bộ đếm
   `revocations` chặn tình huống: hỏi auth xong, trước khi cất vào cache thì token bị thu hồi.
 - **`Downstream`**: lỗi nghiệp vụ chuyển nguyên; mất kết nối → `SERVICE_UNAVAILABLE`. Sai khóa nội bộ **không** được thành
@@ -75,6 +78,10 @@ khác. Lùi 2, 4, 8, 15 s; đích sống lại thì xả ngay. Sự kiện bị 
 ## 8. Câu hỏi hay gặp
 - **Vì sao không JWT?** JWT không thu hồi ngay được; token opaque xóa một dòng là hết hiệu lực.
 - **Vì sao SQLite mà vẫn chịu được đồng thời?** WAL cho đọc song song; ghi xếp hàng qua một kết nối, giao dịch ngắn.
+- **Vì sao bên nhận sự kiện ack một phần?** Lô có hạn 3 giây. Nếu không xong mà bỏ cả lô thì lần sau lại gửi đúng lô đó và
+  đứng mãi. `EventSinkBase` dừng trước hạn 1 giây, ack phần đã làm; `OutboxDrainer` gửi tiếp phần còn lại ngay.
+- **Vì sao `gamification` xử lý theo cụm 50?** Tính lại XP tuần một lần cho mỗi người thay vì mỗi sự kiện, và để MongoDB
+  cộng sẵn bằng index chứa đủ trường. Đo được: 10.000 sự kiện tồn đọng xả trong khoảng 10 giây (trước đó 88 giây).
 - **Mongo tắt thì sao?** Đăng nhập và đồng bộ vẫn chạy, sự kiện nằm chờ trong outbox, Mongo lên lại thì tự xả.
 - **Gửi lại cùng một lô Push thì sao?** Không nhân đôi: bản ghi chỉ-thêm thành `DUPLICATE`, XP không cộng lại.
 - **Vì sao không dùng `@Transactional`?** Giao dịch mở tường minh bằng `inWriteTx` nên nhìn là thấy ranh giới.

@@ -12,6 +12,7 @@ import com.learninge.server.common.error.ErrorCode;
 import com.learninge.server.common.grpc.InternalChannels;
 import com.learninge.server.common.grpc.MetadataKeys;
 import com.learninge.server.common.security.Digests;
+import com.learninge.server.common.security.SlidingWindowLimiter;
 import io.grpc.Metadata;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
@@ -28,16 +29,21 @@ import java.util.regex.Pattern;
 /**
  * Token → người dùng, hỏi auth và nhớ tối đa 60 giây (D-12). Khóa cache là SHA-256 của token; token
  * thô không rời khỏi edge. Mọi đường thu hồi đều qua edge nên cache bị xóa ngay lúc đó.
+ *
+ * <p>Một IP gửi quá nhiều token sai thì không được hỏi auth nữa trong một phút; token đã nhớ vẫn dùng
+ * được nên người cùng mạng đang học không bị ảnh hưởng.
  */
 public final class TokenAuthenticator {
     private static final String SCHEME = "Bearer ";
     private static final Pattern TOKEN = Pattern.compile("[A-Za-z0-9_-]{43}");
     private static final long VALIDATE_TIMEOUT_MS = 500;
     private static final int MAX_ENTRIES = 10_000;
+    private static final int MAX_BAD_TOKENS_PER_MINUTE = 60;
 
     private final InternalChannels channels;
     private final Clock clock;
     private final Cache<ByteString, Identity> cache;
+    private final SlidingWindowLimiter badTokens;
     private final ConcurrentHashMap<String, Set<ByteString>> tokensByUser = new ConcurrentHashMap<>();
 
     /**
@@ -48,6 +54,8 @@ public final class TokenAuthenticator {
     public TokenAuthenticator(InternalChannels channels, Duration maxAge, Clock clock) {
         this.channels = channels;
         this.clock = clock;
+        this.badTokens =
+                new SlidingWindowLimiter(MAX_BAD_TOKENS_PER_MINUTE, Duration.ofMinutes(1), clock);
         this.cache =
                 Caffeine.newBuilder()
                         .maximumSize(MAX_ENTRIES)
@@ -67,14 +75,18 @@ public final class TokenAuthenticator {
                         .build();
     }
 
-    Identity authenticate(Metadata headers) {
+    Identity authenticate(Metadata headers, String ip) {
         ByteString tokenSha256 = hashOf(headers.get(MetadataKeys.AUTHORIZATION));
         Identity cached = cache.getIfPresent(tokenSha256);
         if (cached != null && cached.expiresAtMs() > clock.millis()) {
             return cached;
         }
+        long wait = badTokens.retryAfterSeconds(ip);
+        if (wait > 0) {
+            throw AppException.retryAfter(ErrorCode.RATE_LIMITED, wait);
+        }
         long before = revocations.get();
-        Identity identity = validate(tokenSha256);
+        Identity identity = validate(tokenSha256, ip);
         remember(identity, before);
         return identity;
     }
@@ -115,7 +127,7 @@ public final class TokenAuthenticator {
                 });
     }
 
-    private Identity validate(ByteString tokenSha256) {
+    private Identity validate(ByteString tokenSha256, String ip) {
         try {
             ValidateTokenResponse response =
                     TokenValidatorGrpc.newBlockingStub(channels.to("auth"))
@@ -129,6 +141,9 @@ public final class TokenAuthenticator {
                     e.getStatus().getCode() == Status.Code.UNAUTHENTICATED
                             && trailers != null
                             && trailers.containsKey(MetadataKeys.ERROR_CODE);
+            if (rejectedByAuth) {
+                badTokens.tryAcquire(ip);
+            }
             // auth ngừng hoặc sai khóa nội bộ KHÔNG được thành UNAUTHENTICATED: app sẽ xóa token.
             throw AppException.of(
                     rejectedByAuth ? ErrorCode.UNAUTHENTICATED : ErrorCode.SERVICE_UNAVAILABLE);

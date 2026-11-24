@@ -39,9 +39,12 @@ public class GamificationServiceConfig {
                 List.of(
                         CollectionSpec.of(
                                 "xp_events",
-                                new IndexModel(
-                                        Indexes.ascending("user_id", "week_start", "local_date"),
-                                        new IndexOptions().name("ix_xp_user_week"))),
+                                        // Chứa đủ trường để cộng XP không phải đọc từng sự kiện.
+                                        new IndexModel(
+                                                Indexes.ascending(
+                                                        "user_id", "week_start", "local_date", "xp_awarded", "received_at"),
+                                                new IndexOptions().name("ix_xp_user_totals")))
+                                .without("ix_xp_user_week"),
                         CollectionSpec.of(
                                 "weekly_xp",
                                 new IndexModel(

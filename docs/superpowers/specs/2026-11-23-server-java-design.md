@@ -50,6 +50,10 @@ Dịch vụ không phụ thuộc nhau, chỉ gọi qua stub. Không Lombok, JPA,
 | I-21 | Google Java Style (chờ duyệt KG-8) | Theo yêu cầu: định dạng mặc định IntelliJ (Ctrl+Alt+L) |
 | I-22 | Schema Mongo trùng tên giữa dịch vụ ở chế độ gộp | Thư mục riêng `mongo/<dịch vụ>/` (lỗi do test đầu-cuối phát hiện) |
 | I-23 | `mongo:8.0.34` không chạy trên kernel ≥ 6.19 (SERVER-121912) | Ghim 8.0.38 theo digest, ngoại lệ quy tắc ≥ 2 tuần |
+| I-24 | Lô sự kiện không xử lý kịp 3 giây thì gửi lại mãi | Bên nhận ack một phần trước hạn; ack một phần là tiến triển |
+| I-25 | NFR-N7: quá 1 MiB phải có `PAYLOAD_TOO_LARGE`, nhưng trần của grpc-java không gắn được trailer | Trần vận chuyển 2 MiB, interceptor từ chối từ 1 MiB |
+| I-26 | GRPC-API đọc `cf-connecting-ip` **hoặc** `x-forwarded-for`: sau proxy không phải Cloudflare client tự đặt được header đầu | Chỉ đọc một header, chọn bằng `EDGE_CLIENT_IP_HEADER` |
+| I-27 | Token sai không bị giới hạn tần suất | 60 lần/phút/IP, chỉ chặn token chưa có trong cache |
 
 **Chưa làm:** seed tài khoản demo (`LEARNINGE_DEMO_SEED`), `grammar.json` (tính năng Won't), chốt nơi triển khai (DEC-023).
 

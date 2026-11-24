@@ -23,7 +23,7 @@ class ClientIpResolverTest {
                 Attributes.newBuilder()
                         .set(Grpc.TRANSPORT_ATTR_REMOTE_ADDR, new InetSocketAddress(peer, 1234))
                         .build();
-        return new ClientIpResolver(trust, LOOPBACK).resolve(attributes, headers);
+        return new ClientIpResolver(trust, LOOPBACK, "x-forwarded-for").resolve(attributes, headers);
     }
 
     @Test
@@ -43,6 +43,21 @@ class ClientIpResolverTest {
         assertThat(resolve(true, "127.0.0.1", "evil.example")).isEqualTo("127.0.0.1");
         assertThat(resolve(true, "127.0.0.1", "abc")).isEqualTo("127.0.0.1");
         assertThat(resolve(true, "127.0.0.1", null)).isEqualTo("127.0.0.1");
+    }
+
+    @Test
+    void readsOnlyTheConfiguredHeader() {
+        Metadata headers = new Metadata();
+        headers.put(Metadata.Key.of("cf-connecting-ip", Metadata.ASCII_STRING_MARSHALLER), "6.6.6.6");
+        headers.put(Metadata.Key.of("x-forwarded-for", Metadata.ASCII_STRING_MARSHALLER), "3.3.3.3");
+        Attributes loopback =
+                Attributes.newBuilder()
+                        .set(Grpc.TRANSPORT_ATTR_REMOTE_ADDR, new InetSocketAddress("127.0.0.1", 1234))
+                        .build();
+        assertThat(new ClientIpResolver(true, LOOPBACK, "x-forwarded-for").resolve(loopback, headers))
+                .isEqualTo("3.3.3.3");
+        assertThat(new ClientIpResolver(true, LOOPBACK, "cf-connecting-ip").resolve(loopback, headers))
+                .isEqualTo("6.6.6.6");
     }
 
     @Test

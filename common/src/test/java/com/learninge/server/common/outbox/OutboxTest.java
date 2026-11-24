@@ -186,6 +186,35 @@ class OutboxTest {
         assertThat(store.countPending(Destination.SYNC)).isZero();
     }
 
+    /**
+     * Bên nhận hết giờ giữa lô: phần đã ack không gửi lại, phần còn lại gửi tiếp ngay, không lùi giờ.
+     */
+    @Test
+    void partialAckIsProgress() {
+        for (int i = 0; i < 5; i++) {
+            append();
+        }
+        publisher.maxAcks = 2;
+        assertThat(drainer.drain(Destination.SYNC)).isEqualTo(Outcome.PROGRESS);
+        assertThat(store.countPending(Destination.SYNC)).isEqualTo(3);
+        assertThat(attempts(Destination.SYNC)).containsExactly(0, 0, 0);
+        assertThat(drainer.drain(Destination.SYNC)).isEqualTo(Outcome.PROGRESS);
+        assertThat(drainer.drain(Destination.SYNC)).isEqualTo(Outcome.PROGRESS);
+        assertThat(drainer.drain(Destination.SYNC)).isEqualTo(Outcome.EMPTY);
+    }
+
+    @Test
+    void oldestPendingTellsHowLongTheQueueHasBeenStuck() {
+        assertThat(store.oldestPending(Destination.SYNC)).isEmpty();
+        append();
+        long first = clock.millis();
+        clock.advance(Duration.ofMinutes(6));
+        append();
+        assertThat(store.oldestPending(Destination.SYNC)).contains(first);
+        drainer.drain(Destination.SYNC);
+        assertThat(store.oldestPending(Destination.SYNC)).isEmpty();
+    }
+
     @Test
     void deletesOnlyPublishedRowsPastRetention() {
         append();
@@ -233,6 +262,7 @@ class OutboxTest {
         private final Set<String> poison = new HashSet<>();
         private boolean serving = true;
         private boolean dropAcks;
+        private int maxAcks = Integer.MAX_VALUE;
 
         @Override
         public synchronized Set<String> publish(Destination destination, List<Event> events) {
@@ -245,7 +275,7 @@ class OutboxTest {
             received.computeIfAbsent(destination, d -> new ArrayList<>()).addAll(events);
             Set<String> acks = new HashSet<>();
             if (!dropAcks) {
-                events.forEach(e -> acks.add(e.getEventId()));
+                events.stream().limit(maxAcks).forEach(e -> acks.add(e.getEventId()));
             }
             return acks;
         }

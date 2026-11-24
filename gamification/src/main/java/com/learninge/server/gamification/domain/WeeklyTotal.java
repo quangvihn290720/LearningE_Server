@@ -16,7 +16,7 @@ public record WeeklyTotal(int xp, Instant reachedAt) {
     private static final int DAILY_CAP = 500;
 
     /**
-     * Một sự kiện XP của một người trong một tuần.
+     * XP của một người: một sự kiện, hoặc tổng các sự kiện của một ngày.
      */
     public record Entry(String localDate, int xpAwarded, Instant receivedAt) {
     }

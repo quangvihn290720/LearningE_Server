@@ -11,6 +11,7 @@ import com.learninge.proto.internal.v1.SyncBackendGrpc;
 import com.learninge.server.common.grpc.InternalChannels;
 import com.learninge.server.common.mongo.MongoSchema;
 import com.learninge.server.common.ops.OpsCommand;
+import com.learninge.server.gamification.store.XpEventStore.XpEvent;
 import com.mongodb.client.MongoDatabase;
 
 import java.util.concurrent.TimeUnit;
@@ -113,7 +114,8 @@ public final class RebuildCommand implements OpsCommand {
                                             .setAfterSeq(page.getNextAfterSeq())
                                             .setLimit(PAGE)
                                             .build());
-            page.getEventsList().forEach(e -> updates.xpRecorded(e, e.getXpUuid()));
+            updates.xpRecorded(
+                    page.getEventsList().stream().map(e -> new XpEvent(e, e.getXpUuid())).toList());
             count += page.getEventsCount();
         }
         return count;

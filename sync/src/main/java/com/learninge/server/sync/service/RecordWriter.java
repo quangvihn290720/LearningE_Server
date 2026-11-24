@@ -20,6 +20,7 @@ import com.learninge.server.sync.store.XpEventTable;
 import com.learninge.server.sync.store.XpEventTable.ScoredXp;
 
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.LongConsumer;
 
@@ -38,7 +39,10 @@ public final class RecordWriter {
         this.tables = tables;
     }
 
-    Outcome write(String userId, Change change, long now) {
+    /**
+     * @param xpByDay XP đã cộng theo ngày, dùng chung cho cả lô để không cộng lại từ đầu mỗi sự kiện
+     */
+    Outcome write(String userId, Change change, long now, Map<LocalDate, Integer> xpByDay) {
         if (change.getDataCase() == Change.DataCase.DATA_NOT_SET) {
             return new Rejected(Reason.UNKNOWN_ENTITY);
         }
@@ -55,7 +59,7 @@ public final class RecordWriter {
             case STUDY_LOG -> studyLog(userId, change, updatedAt);
             case QUIZ_ATTEMPT -> quizAttempt(userId, change, updatedAt);
             case EXAM_ATTEMPT -> examAttempt(userId, change, updatedAt);
-            case XP_EVENT -> xpEvent(userId, change, now);
+            case XP_EVENT -> xpEvent(userId, change, now, xpByDay);
             case DATA_NOT_SET -> throw new IllegalStateException("đã xử lý ở trên");
         };
     }
@@ -207,7 +211,8 @@ public final class RecordWriter {
         return Applied.at(seq);
     }
 
-    private Outcome xpEvent(String userId, Change change, long now) {
+    private Outcome xpEvent(
+            String userId, Change change, long now, Map<LocalDate, Integer> xpByDay) {
         String uuid = change.getRecordId();
         XpEventData data = change.getXpEvent();
         if (change.getDeleted() || !Uuids.isCanonical(uuid) || !RecordRules.xpEvent(data)) {
@@ -222,8 +227,10 @@ public final class RecordWriter {
             return new Duplicate(current.getServerSeq(), current);
         }
         LocalDate day = XpRules.localDate(data.getOccurredAtMs(), now);
-        int awarded =
-                XpRules.capped(XpRules.baseXp(data, now), tables.xpEvents.awardedOn(writer(), userId, day));
+        int already =
+                xpByDay.computeIfAbsent(day, d -> tables.xpEvents.awardedOn(writer(), userId, d));
+        int awarded = XpRules.capped(XpRules.baseXp(data, now), already);
+        xpByDay.put(day, already + awarded);
         ScoredXp scored =
                 new ScoredXp(
                         uuid,

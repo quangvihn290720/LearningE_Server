@@ -11,6 +11,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record EdgeProperties(
         boolean trustProxy,
         List<String> trustedProxies,
+        String clientIpHeader,
         int minClient,
         int tokenCacheSecs,
         boolean reflection) {

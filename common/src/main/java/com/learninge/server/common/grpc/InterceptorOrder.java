@@ -13,6 +13,7 @@ public final class InterceptorOrder {
     public static final int IP_RATE_LIMIT = 500;
     public static final int AUTHENTICATION = 600;
     public static final int TOKEN_RATE_LIMIT = 700;
+    public static final int PAYLOAD_LIMIT = 750;
     public static final int CONCURRENCY = 800;
     public static final int ERROR_MAPPING = 1000;
 

@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.learninge.server.content.domain.ContentBundle;
+import com.learninge.server.content.domain.ContentBundle.DeckFile;
+import com.learninge.server.content.domain.ContentBundle.Exam;
+import com.learninge.server.content.domain.ContentBundle.Question;
 import com.learninge.server.content.domain.ContentLock;
 import com.learninge.server.content.domain.ContentValidator;
 import com.learninge.server.content.domain.TermKey;
@@ -17,6 +20,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -227,6 +231,100 @@ class ContentFilesTest {
         editDeck("T05", "\"term\": \"apple\"", "\"term\": \"résumé\"");
         editDeck("T05", "\"term\": \"bread\"", "\"term\": \"resume\"");
         assertThat(ContentValidator.validate(read())).anyMatch(e -> e.contains("trùng từ trong bộ"));
+    }
+
+    /**
+     * Mỗi dòng: tệp | đổi từ | thành | lỗi phải báo.
+     */
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', quoteCharacter = '`', textBlock = """
+            languages.json | "code": "ko" | "code": "kor" | code sai: kor
+            languages.json | "code": "ko" | "code": "ja" | trùng ja
+            languages.json | "Romaja" | "" | thiếu reading_label
+            decks/T05.json | "code": "T05" | "code": "food" | code phải dạng T01
+            decks/T05.json | "code": "T05" | "code": "T06" | trùng code
+            decks/T05.json | "version": 1 | "version": 0 | thiếu version
+            decks/T05.json | "level": "A1" | "level": "C2" | level: C2
+            decks/T05.json | "language": "en" | "language": "fr" | ngôn ngữ lạ: fr
+            decks/T05.json | "exam_tag": null | "exam_tag": "HSK" | exam_tag: HSK
+            decks/T05.json | "T05-0001" | "T06-0001" | uid sai
+            decks/T05.json | "T05-0001" | "T05-0002" | trùng uid
+            decks/T05.json | "term": "bread" | "term": "br\\u0007ead" | ký tự lạ
+            decks/T05.json | "term": "bread" | "term": null | thiếu term
+            decks/T05.json | "meaning": "bánh mì" | "meaning": "" | thiếu meaning
+            exams.json | "code": "E01" | "code": "E1" | code phải dạng E01
+            exams.json | "code": "E01" | "code": "T05" | trùng code
+            exams.json | "version": 1 | "version": 0 | thiếu version
+            exams.json | "exam_tag": "TOEIC" | "exam_tag": null | exam_tag: null
+            exams.json | "duration_sec": 600 | "duration_sec": 59 | duration_sec
+            """)
+    void everyContentRuleHasItsOwnMessage(String file, String from, String to, String message)
+            throws IOException {
+        edit(file, from, to);
+        assertThat(ContentValidator.validate(read())).anyMatch(e -> e.contains(message));
+    }
+
+    @Test
+    void textsLongerThanTheAppAcceptsAreRejected() throws IOException {
+        editDeck("T05", "\"meaning\": \"bánh mì\"", "\"meaning\": \"" + "x".repeat(201) + "\"");
+        editDeck("T05", "\"icon\": \"t05-food-drinks\"", "\"icon\": \"" + "i".repeat(41) + "\"");
+        assertThat(ContentValidator.validate(read()))
+                .anyMatch(e -> e.contains("meaning dài quá 200"))
+                .anyMatch(e -> e.contains("icon dài quá 40"));
+    }
+
+    private List<String> validateQuestion(Question question) {
+        ContentBundle real = read();
+        Exam exam = new Exam("E99", 1, "TOEIC", "Đề thử", null, 600, null, 1, List.of(question), null);
+        return ContentValidator.validate(new ContentBundle(real.languages(), real.decks(), List.of(exam)));
+    }
+
+    private static Question question(List<String> options, int correct, String deck, String term) {
+        return new Question(1, null, "Chọn từ đúng", options, correct, null, deck, term);
+    }
+
+    @Test
+    void examQuestionsNeedFourDifferentOptionsAndARealWord() {
+        List<String> good = List.of("a", "b", "c", "d");
+        assertThat(validateQuestion(question(good, 3, "T05", "BREAD"))).isEmpty();
+        assertThat(validateQuestion(question(good, 0, null, null))).isEmpty();
+        assertThat(validateQuestion(question(null, 0, null, null))).anyMatch(e -> e.contains("phải có 4 lựa chọn"));
+        assertThat(validateQuestion(question(List.of("a", "b", "c"), 0, null, null)))
+                .anyMatch(e -> e.contains("phải có 4 lựa chọn"));
+        assertThat(validateQuestion(question(List.of("a", "b", "c", " "), 0, null, null)))
+                .anyMatch(e -> e.contains("phải có 4 lựa chọn"));
+        assertThat(validateQuestion(question(Arrays.asList("a", "b", "c", null), 0, null, null)))
+                .anyMatch(e -> e.contains("phải có 4 lựa chọn"));
+        assertThat(validateQuestion(question(List.of("a", "a", "c", "d"), 0, null, null)))
+                .anyMatch(e -> e.contains("phải khác nhau"));
+        for (int correct : new int[]{-1, 4}) {
+            assertThat(validateQuestion(question(good, correct, null, null)))
+                    .anyMatch(e -> e.contains("correct_index sai"));
+        }
+        assertThat(validateQuestion(question(good, 0, "T05", "không có từ này")))
+                .anyMatch(e -> e.contains("không tìm thấy từ"));
+        assertThat(validateQuestion(question(good, 0, "T05", null))).anyMatch(e -> e.contains("không tìm thấy từ"));
+        assertThat(validateQuestion(question(good, 0, null, "bread"))).anyMatch(e -> e.contains("không tìm thấy từ"));
+    }
+
+    @Test
+    void anExamOrADeckCannotBeEmpty() {
+        ContentBundle real = read();
+        Exam empty = new Exam("E99", 1, "TOEIC", "Đề thử", null, 600, null, 1, List.of(), null);
+        DeckFile first = real.decks().getFirst();
+        DeckFile noWords = new DeckFile(first.deck(), first.source(), List.of());
+        assertThat(
+                ContentValidator.validate(new ContentBundle(real.languages(), List.of(noWords), List.of(empty))))
+                .anyMatch(e -> e.contains("phải có 1..50 câu"))
+                .anyMatch(e -> e.contains("không có từ"));
+    }
+
+    @Test
+    void aDamagedLockIsReported() {
+        for (String line : List.of("deck\tT05\t1", "word\tT05-0001", "lạ\ta\tb")) {
+            assertThatThrownBy(() -> ContentLock.parse("# chú thích\n\n" + line))
+                    .hasMessageContaining("dòng lạ");
+        }
     }
 
     @Test
