@@ -53,6 +53,12 @@ x-env: &env
   JAVA_TOOL_OPTIONS: *jvm
   LEARNINGE_INTERNAL_TOKEN: ${LEARNINGE_INTERNAL_TOKEN:?chạy deploy/gen-env trước}
 
+# Sao lưu SQLite mỗi ngày, giữ 14 bản. Chép ra máy khác: docs/VAN-HANH.md.
+x-backup: &backup
+  LEARNINGE_BACKUP_DIR: /backup
+  LEARNINGE_BACKUP_INTERVAL_HOURS: ${LEARNINGE_BACKUP_INTERVAL_HOURS:-24}
+  LEARNINGE_BACKUP_KEEP: ${LEARNINGE_BACKUP_KEEP:-14}
+
 services:
   mongo:
     image: mongo:8.0.38@sha256:479e85ced54ffb8a40dade1dcde2da2a9ae858515b9415e9cc54bfb8f0575d01   # < 8.0.38 không chạy trên kernel ≥ 6.19 (SERVER-121912)
@@ -83,7 +89,7 @@ services:
     image: learninge/auth
     build: { context: .., dockerfile: deploy/Dockerfile, args: { SERVICE: auth } }
     environment:
-      <<: *env
+      <<: [*env, *backup]
       # Băm mật khẩu cần trình biên dịch C2: 30 ms thay vì 270 ms. Biến này đè lên cờ chung ở trên.
       JDK_JAVA_OPTIONS: -XX:TieredStopAtLevel=4
       AUTH_DB_PATH: /data/auth.db
@@ -92,19 +98,19 @@ services:
       SYNC_ADDR: sync:50053
       GAMIFICATION_ADDR: gamification:50055
       INSIGHT_ADDR: insight:50056
-    volumes: ["auth-data:/data"]
+    volumes: ["auth-data:/data", "auth-backup:/backup"]
 
   sync:
     <<: *service
     image: learninge/sync
     build: { context: .., dockerfile: deploy/Dockerfile, args: { SERVICE: sync } }
     environment:
-      <<: *env
+      <<: [*env, *backup]
       SYNC_DB_PATH: /data/sync.db
       LEARNINGE_PSEUDONYM_KEY: ${LEARNINGE_PSEUDONYM_KEY:?}
       GAMIFICATION_ADDR: gamification:50055
       INSIGHT_ADDR: insight:50056
-    volumes: ["sync-data:/data"]
+    volumes: ["sync-data:/data", "sync-backup:/backup"]
 
   content:
     <<: *service
@@ -170,3 +176,5 @@ volumes:
   mongo-data: {}
   auth-data: {}
   sync-data: {}
+  auth-backup: {}          # tách riêng: sync không đọc được bản sao lưu của auth
+  sync-backup: {}

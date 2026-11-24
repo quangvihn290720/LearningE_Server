@@ -25,7 +25,8 @@ COPY --from=jre /jre /opt/java
 ENV PATH="/opt/java/bin:$PATH" LANG=C.UTF-8
 RUN groupadd --gid 10001 app \
  && useradd --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app \
- && mkdir -p /app/native /data && chown -R app:app /app/native /data
+ && mkdir -p /app/native /data /data-auth /data-sync /backup /backup-auth /backup-sync \
+ && chown -R app:app /app/native /data* /backup*
 WORKDIR /app
 COPY --from=extract /layers/dependencies/ ./
 COPY --from=extract /layers/spring-boot-loader/ ./
