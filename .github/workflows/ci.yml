@@ -49,5 +49,19 @@ jobs:
           published=$(docker ps --filter label=com.docker.compose.project=learninge --format '{{.Ports}}' | grep -oE '[^ ,]+->' | sort -u)
           test "$published" = "127.0.0.1:50051->" || { echo "$published"; exit 1; }
       - run: docker compose -f deploy/docker-compose.yml run --rm content --ops=import --dir=/content-data
+      - name: Sao lưu tự động đã chạy, script theo dõi báo OK
+        run: |
+          docker compose -f deploy/docker-compose.yml exec -T auth sh -c 'ls /backup/auth-*.db'
+          docker compose -f deploy/docker-compose.yml exec -T sync sh -c 'ls /backup/sync-*.db'
+          CHECK_DISK_PERCENT=99 bash deploy/check.sh
+      - name: Chế độ gộp sau Caddy, cùng dữ liệu
+        env:
+          EDGE_DOMAIN: api.learninge.test
+          CADDY_TLS: tls internal
+        run: |
+          docker compose -f deploy/docker-compose.yml down
+          docker compose -f deploy/docker-compose.small.yml -f deploy/docker-compose.tls.yml up --build -d --wait --wait-timeout 300
+          code=$(curl -sk --http2 -o /dev/null -w '%{http_code} %{http_version}' --resolve api.learninge.test:443:127.0.0.1 https://api.learninge.test/)
+          test "$code" = "415 2" || { echo "$code"; exit 1; }   # 415 là trả lời của gRPC khi gọi bằng HTTP thường
       - if: failure()
-        run: docker compose -f deploy/docker-compose.yml logs --tail 100
+        run: docker ps -a && docker compose -f deploy/docker-compose.yml logs --tail 100

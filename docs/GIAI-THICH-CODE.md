@@ -82,6 +82,12 @@ khác. Lùi 2, 4, 8, 15 s; đích sống lại thì xả ngay. Sự kiện bị 
   đứng mãi. `EventSinkBase` dừng trước hạn 1 giây, ack phần đã làm; `OutboxDrainer` gửi tiếp phần còn lại ngay.
 - **Vì sao `gamification` xử lý theo cụm 50?** Tính lại XP tuần một lần cho mỗi người thay vì mỗi sự kiện, và để MongoDB
   cộng sẵn bằng index chứa đủ trường. Đo được: 10.000 sự kiện tồn đọng xả trong khoảng 10 giây (trước đó 88 giây).
+- **Vì sao khôi phục `sync.db` phải nhảy số thứ tự?** Máy người dùng nhớ mốc đã kéo, ví dụ 1.000. Bản sao lưu chỉ tới 900
+  thì thay đổi mới nhận số 901 và máy đó không bao giờ thấy. `SyncTables.startNewEpoch` nhảy qua mọi mốc đã cấp.
+- **Vì sao phiên đăng nhập tự gia hạn?** Người học đều mỗi ngày không nên bị đăng xuất giữa chừng. `SessionService` gia hạn
+  khi đã qua nửa hạn, tối đa 180 ngày; bỏ không 30 ngày vẫn hết hạn. Ghi nhiều nhất một lần mỗi ngày cho mỗi phiên.
+- **Vì sao `synchronous = FULL`?** App đánh dấu "đã đồng bộ" khi nhận trả lời, nên commit xong không được mất khi mất điện.
+  Đo trên máy phát triển: không chậm đi đáng kể.
 - **Mongo tắt thì sao?** Đăng nhập và đồng bộ vẫn chạy, sự kiện nằm chờ trong outbox, Mongo lên lại thì tự xả.
 - **Gửi lại cùng một lô Push thì sao?** Không nhân đôi: bản ghi chỉ-thêm thành `DUPLICATE`, XP không cộng lại.
 - **Vì sao không dùng `@Transactional`?** Giao dịch mở tường minh bằng `inWriteTx` nên nhìn là thấy ranh giới.

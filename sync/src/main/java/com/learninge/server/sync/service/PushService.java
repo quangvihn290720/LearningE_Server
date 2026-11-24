@@ -77,7 +77,9 @@ public final class PushService {
             throw AppException.of(ErrorCode.ACCOUNT_DELETED);
         }
         long now = clock.millis();
-        PushResponse.Builder response = PushResponse.newBuilder().setServerTimeMs(now);
+        PushResponse.Builder response = PushResponse.newBuilder()
+                .setServerTimeMs(now)
+                .setDataEpoch(tables.epoch(tables.writer()));
         List<ScoredXp> xp = new ArrayList<>();
         Map<Change.DataCase, Integer> applied = new EnumMap<>(Change.DataCase.class);
         Map<LocalDate, Integer> xpByDay = new HashMap<>();

@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
  * Kiểm toàn bộ nội dung <b>trước</b> khi ghi bất cứ gì. Hàm thuần, gom đủ lỗi để sửa một lượt.
  */
 public final class ContentValidator {
-    private static final Pattern CODE = Pattern.compile("[A-Z][0-9]{2}");
+    private static final Pattern CODE = Pattern.compile("[A-Z][0-9]{2,3}");
     private static final Pattern LANGUAGE = Pattern.compile("[a-z]{2}");
     private static final Set<String> LEVELS = Set.of("A1", "A2", "B1");
     /**

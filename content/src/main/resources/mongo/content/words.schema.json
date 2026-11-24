@@ -2,8 +2,8 @@
   "bsonType": "object", "additionalProperties": false,
   "required": ["_id", "deck_code", "term", "meaning_vi", "sort_order", "deleted"],
   "properties": {
-    "_id": { "bsonType": "string", "pattern": "^[A-Z][0-9]{2}-[0-9]{4}$" },
-    "deck_code": { "bsonType": "string", "pattern": "^[A-Z][0-9]{2}$" },
+    "_id": { "bsonType": "string", "pattern": "^[A-Z][0-9]{2,3}-[0-9]{4}$" },
+    "deck_code": { "bsonType": "string", "pattern": "^[A-Z][0-9]{2,3}$" },
     "term": { "bsonType": "string", "minLength": 1, "maxLength": 100 },
     "reading": { "bsonType": ["string", "null"], "maxLength": 100 },
     "part_of_speech": { "bsonType": ["string", "null"], "maxLength": 20 },

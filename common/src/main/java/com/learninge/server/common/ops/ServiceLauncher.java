@@ -2,6 +2,7 @@ package com.learninge.server.common.ops;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -16,6 +17,11 @@ import org.springframework.context.ConfigurableApplicationContext;
  */
 public final class ServiceLauncher {
     private static final Logger log = LoggerFactory.getLogger(ServiceLauncher.class);
+
+    /**
+     * Lệnh mà kết quả chính là thứ in ra stdout: tắt log trên console để chuyển hướng được vào tệp.
+     */
+    private static final Set<String> PRINTING = Set.of("outbox-list", "report");
 
     private ServiceLauncher() {
     }
@@ -44,6 +50,9 @@ public final class ServiceLauncher {
             all.add("--spring.grpc.server.enabled=false");
             all.add("--spring.main.web-application-type=none");
             all.add("--learninge.background-enabled=false");
+            if (PRINTING.contains(opsName(args))) {
+                all.add("--logging.threshold.console=OFF");
+            }
         }
         return builder.run(all.toArray(String[]::new));
     }
@@ -68,6 +77,7 @@ public final class ServiceLauncher {
             return 0;
         } catch (Exception e) {
             log.error("Lệnh --ops={} thất bại", name, e);
+            System.err.println("Lệnh --ops=" + name + " thất bại: " + e.getMessage());
             return 1;
         }
     }

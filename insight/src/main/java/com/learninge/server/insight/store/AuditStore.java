@@ -10,6 +10,7 @@ import com.mongodb.client.model.Updates;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
@@ -26,6 +27,11 @@ public final class AuditStore {
      * Giữ dấu lâu hơn mọi khoảng gửi lại của outbox (7 ngày) và requeue thủ công.
      */
     private static final Duration TOMBSTONE_TTL = Duration.ofDays(120);
+
+    /**
+     * UNKNOWN, DEADLINE_EXCEEDED, INTERNAL, UNAVAILABLE, DATA_LOSS.
+     */
+    private static final List<Integer> SERVER_ERRORS = List.of(2, 4, 13, 14, 15);
 
     private final MongoCollection<Document> audit;
     private final MongoCollection<Document> requests;
@@ -56,6 +62,42 @@ public final class AuditStore {
         if (!logs.isEmpty()) {
             requests.insertMany(logs);
         }
+    }
+
+    /**
+     * Mỗi RPC một dòng, gọi nhiều nhất trước; mọi dòng còn lưu (7 ngày).
+     */
+    public List<Document> rpcStats() {
+        Document isServerError = new Document("$in", List.of("$code", SERVER_ERRORS));
+        Document isOtherError =
+                new Document(
+                        "$and",
+                        List.of(
+                                new Document("$ne", List.of("$code", 0)),
+                                new Document("$not", List.of(isServerError))));
+        Document percentiles =
+                new Document(
+                        "$percentile",
+                        new Document("input", "$duration_ms")
+                                .append("p", List.of(0.5, 0.95))
+                                .append("method", "approximate"));
+        Document group =
+                new Document("_id", "$rpc")
+                        .append("calls", new Document("$sum", 1))
+                        .append("server_errors", count(isServerError))
+                        .append("other_errors", count(isOtherError))
+                        .append("times", percentiles)
+                        .append("slowest", new Document("$max", "$duration_ms"));
+        return requests
+                .aggregate(
+                        List.of(
+                                new Document("$group", group),
+                                new Document("$sort", new Document("calls", -1).append("_id", 1))))
+                .into(new ArrayList<>());
+    }
+
+    private static Document count(Document condition) {
+        return new Document("$sum", new Document("$cond", List.of(condition, 1, 0)));
     }
 
     public boolean isDeleted(String userHmac) {

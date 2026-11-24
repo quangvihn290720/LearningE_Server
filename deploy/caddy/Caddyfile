@@ -1,0 +1,17 @@
+{
+	admin off
+	servers {
+		protocols h1 h2
+	}
+}
+
+{$EDGE_DOMAIN} {
+	{$CADDY_TLS}
+	# gRPC là HTTP/2 tới tận edge. Caddy ghi đè X-Forwarded-For bằng IP thật nên app không giả được.
+	reverse_proxy edge:50051 {
+		flush_interval -1
+		transport http {
+			versions h2c
+		}
+	}
+}

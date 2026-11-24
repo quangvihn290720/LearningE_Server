@@ -5,22 +5,30 @@ import com.learninge.proto.app.v1.ChangePasswordRequest;
 import com.learninge.proto.app.v1.ChangePasswordResponse;
 import com.learninge.proto.app.v1.DeleteAccountRequest;
 import com.learninge.proto.app.v1.DeleteAccountResponse;
+import com.learninge.proto.app.v1.DeviceSession;
 import com.learninge.proto.app.v1.GetResetQuestionRequest;
 import com.learninge.proto.app.v1.GetResetQuestionResponse;
+import com.learninge.proto.app.v1.ListSessionsResponse;
 import com.learninge.proto.app.v1.LoginRequest;
 import com.learninge.proto.app.v1.LogoutResponse;
 import com.learninge.proto.app.v1.RegisterRequest;
 import com.learninge.proto.app.v1.ResetPasswordRequest;
+import com.learninge.proto.app.v1.RevokeOtherSessionsResponse;
+import com.learninge.proto.app.v1.RevokeSessionRequest;
+import com.learninge.proto.app.v1.RevokeSessionResponse;
 import com.learninge.proto.app.v1.UpdateMeRequest;
 import com.learninge.proto.app.v1.UpdateMeResponse;
 import com.learninge.proto.app.v1.User;
 import com.learninge.proto.internal.v1.AuthBackendGrpc;
+import com.learninge.proto.internal.v1.BackendListSessionsRequest;
 import com.learninge.proto.internal.v1.BackendLogoutRequest;
+import com.learninge.proto.internal.v1.BackendRevokeOtherSessionsRequest;
 import com.learninge.proto.internal.v1.ExportProfilesRequest;
 import com.learninge.proto.internal.v1.ExportProfilesResponse;
 import com.learninge.proto.internal.v1.GetProfileRequest;
 import com.learninge.proto.internal.v1.GetProfileResponse;
 import com.learninge.proto.internal.v1.PublicProfile;
+import com.learninge.server.auth.domain.OpaqueToken;
 import com.learninge.server.auth.service.AccountService;
 import com.learninge.server.auth.service.AccountService.Registration;
 import com.learninge.server.auth.service.LoginService;
@@ -138,6 +146,40 @@ public final class AuthBackendService extends AuthBackendGrpc.AuthBackendImplBas
             DeleteAccountRequest request, StreamObserver<DeleteAccountResponse> observer) {
         accounts.deleteAccount(CallerContext.userId(), request.getPassword());
         Unary.reply(observer, DeleteAccountResponse.getDefaultInstance());
+    }
+
+    @Override
+    public void listSessions(
+            BackendListSessionsRequest request, StreamObserver<ListSessionsResponse> observer) {
+        String current = OpaqueToken.hashHex(TokenValidatorService.requireSha256(request.getTokenSha256()));
+        ListSessionsResponse.Builder response = ListSessionsResponse.newBuilder();
+        for (var session : sessions.list(CallerContext.userId())) {
+            response.addSessions(
+                    DeviceSession.newBuilder()
+                            .setId(session.id())
+                            .setDeviceName(session.deviceName())
+                            .setCreatedAtMs(session.createdAt())
+                            .setLastUsedAtMs(session.lastUsedAt())
+                            .setExpiresAtMs(session.expiresAt())
+                            .setCurrent(session.hash().equals(current)));
+        }
+        Unary.reply(observer, response.build());
+    }
+
+    @Override
+    public void revokeSession(
+            RevokeSessionRequest request, StreamObserver<RevokeSessionResponse> observer) {
+        sessions.revokeOne(CallerContext.userId(), request.getId());
+        Unary.reply(observer, RevokeSessionResponse.getDefaultInstance());
+    }
+
+    @Override
+    public void revokeOtherSessions(
+            BackendRevokeOtherSessionsRequest request,
+            StreamObserver<RevokeOtherSessionsResponse> observer) {
+        byte[] current = TokenValidatorService.requireSha256(request.getTokenSha256());
+        int revoked = sessions.revokeOthers(CallerContext.userId(), current);
+        Unary.reply(observer, RevokeOtherSessionsResponse.newBuilder().setRevoked(revoked).build());
     }
 
     @Override

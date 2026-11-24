@@ -11,6 +11,9 @@ import org.springframework.jdbc.core.simple.JdbcClient;
  * SQL của bảng {@code outbox}; bảng này giống hệt nhau ở auth.db và sync.db.
  */
 public final class OutboxStore {
+    record DeadRow(String eventId, String destination, String type, String error, long deadAt) {
+    }
+
     private final SqliteDatabase database;
 
     public OutboxStore(SqliteDatabase database) {
@@ -148,6 +151,63 @@ public final class OutboxStore {
                                 WHERE event_id = ? AND published_at IS NULL
                                 """)
                 .params(now, eventId)
+                .update();
+    }
+
+    long countDead(Destination destination) {
+        return database
+                .reader()
+                .sql("SELECT COUNT(*) FROM outbox WHERE destination = ? AND dead_at IS NOT NULL")
+                .param(destination.id())
+                .query(Long.class)
+                .single();
+    }
+
+    /**
+     * Các dòng "chết" mới nhất trước; không đọc payload.
+     */
+    List<DeadRow> dead(int limit) {
+        return database
+                .reader()
+                .sql(
+                        """
+                                SELECT event_id, destination, type, last_error, dead_at FROM outbox
+                                WHERE dead_at IS NOT NULL ORDER BY dead_at DESC, id DESC LIMIT ?
+                                """)
+                .param(limit)
+                .query(
+                        (rs, i) ->
+                                new DeadRow(
+                                        rs.getString("event_id"),
+                                        rs.getString("destination"),
+                                        rs.getString("type"),
+                                        rs.getString("last_error"),
+                                        rs.getLong("dead_at")))
+                .list();
+    }
+
+    int requeueAllDead(long now) {
+        return writer()
+                .sql(
+                        """
+                                UPDATE outbox SET dead_at = NULL, attempts = 0, last_error = NULL, next_attempt_at = ?
+                                WHERE dead_at IS NOT NULL
+                                """)
+                .param(now)
+                .update();
+    }
+
+    /**
+     * Gửi lại mọi sự kiện đã phát còn lưu: bên nhận idempotent nên chỉ bù phần bị mất.
+     */
+    int replay(Destination destination, long now) {
+        return writer()
+                .sql(
+                        """
+                                UPDATE outbox SET published_at = NULL, attempts = 0, last_error = NULL, next_attempt_at = ?
+                                WHERE destination = ? AND published_at IS NOT NULL
+                                """)
+                .params(now, destination.id())
                 .update();
     }
 

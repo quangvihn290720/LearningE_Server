@@ -10,6 +10,9 @@ import com.learninge.server.common.sqlite.SqliteDatabase;
 import com.learninge.server.common.testing.MutableClock;
 import io.grpc.Status;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -25,6 +28,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.boot.DefaultApplicationArguments;
 
 class OutboxTest {
     @TempDir
@@ -157,6 +161,42 @@ class OutboxTest {
         publisher.poison.clear();
         assertThat(store.requeue(poison, clock.millis())).isPositive();
         drainer.drain(Destination.SYNC);
+        assertThat(publisher.received(Destination.SYNC)).hasSize(2);
+    }
+
+    @Test
+    void operatorsSeeDeadRowsAndPutThemAllBack() throws Exception {
+        append();
+        append();
+        publisher.poison.addAll(pendingIds(Destination.SYNC));
+        for (int i = 0; i < 12; i++) {
+            drainer.drain(Destination.SYNC);
+            clock.advance(Duration.ofSeconds(20));
+        }
+        assertThat(store.countDead(Destination.SYNC)).isEqualTo(2);
+        ByteArrayOutputStream text = new ByteArrayOutputStream();
+        new OutboxListCommand(store, clock, new PrintStream(text, true, StandardCharsets.UTF_8))
+                .run(new DefaultApplicationArguments());
+        assertThat(text.toString(StandardCharsets.UTF_8))
+                .contains("sync", "user.deleted", "INVALID_ARGUMENT", store.dead(1).getFirst().eventId());
+
+        publisher.poison.clear();
+        new OutboxRequeueCommand(store, clock)
+                .run(new DefaultApplicationArguments("--ops=outbox-requeue", "--all-dead"));
+        drainer.drain(Destination.SYNC);
+        assertThat(store.countDead(Destination.SYNC)).isZero();
+        assertThat(publisher.received(Destination.SYNC)).hasSize(2);
+    }
+
+    @Test
+    void replaySendsPublishedEventsOfOneDestinationAgain() {
+        append();
+        drainer.drain(Destination.SYNC);
+        drainer.drain(Destination.INSIGHT);
+        new OutboxReplayCommand(store, clock)
+                .run(new DefaultApplicationArguments("--destination=sync"));
+        drainer.drain(Destination.SYNC);
+        assertThat(drainer.drain(Destination.INSIGHT)).isEqualTo(Outcome.EMPTY);
         assertThat(publisher.received(Destination.SYNC)).hasSize(2);
     }
 

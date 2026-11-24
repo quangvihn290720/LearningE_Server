@@ -2,7 +2,7 @@
   "bsonType": "object", "additionalProperties": false,
   "required": ["_id", "name", "language_code", "sort_order", "version", "word_count", "updated_at"],
   "properties": {
-    "_id": { "bsonType": "string", "pattern": "^[A-Z][0-9]{2}$" },
+    "_id": { "bsonType": "string", "pattern": "^[A-Z][0-9]{2,3}$" },
     "name": { "bsonType": "string", "minLength": 1, "maxLength": 50 },
     "description": { "bsonType": ["string", "null"], "maxLength": 200 },
     "language_code": { "bsonType": "string", "pattern": "^[a-z]{2}$" },

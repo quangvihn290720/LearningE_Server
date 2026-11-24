@@ -15,6 +15,9 @@ import java.util.List;
 public final class PullService {
     private static final int MAX_PAGE = 500;
 
+    private record Snapshot(List<Change> changes, long epoch) {
+    }
+
     private final SqliteDatabase database;
     private final SyncTables tables;
 
@@ -34,8 +37,13 @@ public final class PullService {
         int limit = request.getLimit() == 0 ? MAX_PAGE : request.getLimit();
 
         // Lấy dư một bản ghi để biết còn trang sau hay không.
-        List<Change> found =
-                database.inReadTx(() -> tables.changesAfter(userId, request.getSince(), limit + 1));
+        Snapshot snapshot =
+                database.inReadTx(
+                        () ->
+                                new Snapshot(
+                                        tables.changesAfter(userId, request.getSince(), limit + 1),
+                                        tables.epoch(tables.reader())));
+        List<Change> found = snapshot.changes();
         boolean hasMore = found.size() > limit;
         List<Change> page = hasMore ? found.subList(0, limit) : found;
         return PullResponse.newBuilder()
@@ -43,6 +51,7 @@ public final class PullService {
                 .setNextCursor(page.isEmpty() ? request.getSince() : page.getLast().getServerSeq())
                 .setHasMore(hasMore)
                 .setServerTimeMs(now)
+                .setDataEpoch(snapshot.epoch())
                 .build();
     }
 }

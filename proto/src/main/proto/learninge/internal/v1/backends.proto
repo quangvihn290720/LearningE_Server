@@ -26,9 +26,14 @@ service AuthBackend {                                       // auth; RPC cần u
   rpc GetResetQuestion(learninge.app.v1.GetResetQuestionRequest) returns (learninge.app.v1.GetResetQuestionResponse);
   rpc ResetPassword(learninge.app.v1.ResetPasswordRequest) returns (learninge.app.v1.AuthSession);
   rpc DeleteAccount(learninge.app.v1.DeleteAccountRequest) returns (learninge.app.v1.DeleteAccountResponse);
+  rpc ListSessions(BackendListSessionsRequest) returns (learninge.app.v1.ListSessionsResponse);
+  rpc RevokeSession(learninge.app.v1.RevokeSessionRequest) returns (learninge.app.v1.RevokeSessionResponse);
+  rpc RevokeOtherSessions(BackendRevokeOtherSessionsRequest) returns (learninge.app.v1.RevokeOtherSessionsResponse);
   rpc ExportProfiles(ExportProfilesRequest) returns (ExportProfilesResponse);
 }
 message BackendLogoutRequest { bytes token_sha256 = 1; }
+message BackendListSessionsRequest { bytes token_sha256 = 1; }         // phiên của máy đang gọi
+message BackendRevokeOtherSessionsRequest { bytes token_sha256 = 1; }
 message GetProfileRequest {}                                // user lấy từ x-user-id
 message GetProfileResponse { learninge.app.v1.User user = 1; }
 message ExportProfilesRequest { int64 after_id = 1; int32 limit = 2; }   // limit ≤ 1000
@@ -53,6 +58,8 @@ service ContentBackend {                                    // content
   rpc GetManifest(learninge.app.v1.GetManifestRequest) returns (learninge.app.v1.GetManifestResponse);
   rpc GetDeck(learninge.app.v1.GetDeckRequest) returns (learninge.app.v1.GetDeckResponse);
   rpc GetExam(learninge.app.v1.GetExamRequest) returns (learninge.app.v1.GetExamResponse);
+  rpc GetDecks(learninge.app.v1.GetDecksRequest) returns (learninge.app.v1.GetDecksResponse);
+  rpc GetExams(learninge.app.v1.GetExamsRequest) returns (learninge.app.v1.GetExamsResponse);
 }
 
 service GamificationBackend {                               // gamification

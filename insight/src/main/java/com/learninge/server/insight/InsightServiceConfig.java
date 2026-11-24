@@ -4,9 +4,11 @@ import com.learninge.server.common.config.InternalServerConfiguration;
 import com.learninge.server.common.mongo.CollectionSpec;
 import com.learninge.server.common.mongo.MongoConfiguration;
 import com.learninge.server.common.mongo.MongoSchema;
+import com.learninge.server.common.ops.OpsCommand;
 import com.learninge.server.insight.grpc.InsightBackendService;
 import com.learninge.server.insight.grpc.InsightEventSink;
 import com.learninge.server.insight.service.EventRecorder;
+import com.learninge.server.insight.service.ReportCommand;
 import com.learninge.server.insight.store.AnalyticsStore;
 import com.learninge.server.insight.store.AuditStore;
 import com.mongodb.client.MongoDatabase;
@@ -83,6 +85,11 @@ public class InsightServiceConfig {
     @Bean
     InsightBackendService insightBackendService(AuditStore audit, AnalyticsStore analytics) {
         return new InsightBackendService(audit, analytics);
+    }
+
+    @Bean
+    ReportCommand reportCommand(AnalyticsStore analytics, AuditStore audit, Clock clock) {
+        return new ReportCommand(analytics, audit, clock, OpsCommand.stdout());
     }
 
     @Bean

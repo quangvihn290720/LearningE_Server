@@ -1,0 +1,63 @@
+# Máy nhỏ (VPS 2 GB): MongoDB + một JVM chạy cả 6 dịch vụ, khoảng 1 GB RAM. Cùng volume với docker-compose.yml
+# nên chuyển qua lại không mất dữ liệu (phải "down" bản kia trước).
+#   docker compose -f deploy/docker-compose.small.yml up --build -d --wait
+name: learninge
+
+services:
+  mongo:
+    extends: { file: docker-compose.yml, service: mongo }
+
+  # Giữ tên "edge" để docker-compose.tls.yml dùng chung được.
+  edge:
+    extends: { file: docker-compose.yml, service: edge }
+    image: learninge/all-in-one
+    build: { context: .., dockerfile: deploy/Dockerfile, args: { SERVICE: all-in-one } }
+    mem_limit: 800m
+    pids_limit: 512
+    environment:
+      JAVA_TOOL_OPTIONS: >-
+        -Xmx384m -Xss512k -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=96m -XX:MaxDirectMemorySize=96m
+        -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError
+        -XX:+DisableAttachMechanism -XX:-CreateCoredumpOnCrash -XX:-HeapDumpOnOutOfMemoryError
+        -Djdk.serialFilter=!* -Dorg.sqlite.tmpdir=/app/native -Dio.netty.native.workdir=/app/native
+        -Djava.io.tmpdir=/tmp
+      LEARNINGE_SERVER_KEY: ${LEARNINGE_SERVER_KEY:?}
+      LEARNINGE_PSEUDONYM_KEY: ${LEARNINGE_PSEUDONYM_KEY:?}
+      AUTH_ADDR: 127.0.0.1:50052     # cả 6 dịch vụ trong một container
+      SYNC_ADDR: 127.0.0.1:50053
+      CONTENT_ADDR: 127.0.0.1:50054
+      GAMIFICATION_ADDR: 127.0.0.1:50055
+      INSIGHT_ADDR: 127.0.0.1:50056
+      AUTH_DB_PATH: /data-auth/auth.db
+      SYNC_DB_PATH: /data-sync/sync.db
+      CONTENT_MONGO_URI: mongodb://content:${MONGO_CONTENT_PASSWORD}@mongo:27017/?authSource=learninge_content
+      GAMIFICATION_MONGO_URI: mongodb://game:${MONGO_GAME_PASSWORD}@mongo:27017/?authSource=learninge_game
+      INSIGHT_MONGO_URI: mongodb://insight:${MONGO_INSIGHT_PASSWORD}@mongo:27017/?authSource=learninge_insight
+      LEARNINGE_BACKUP_DIR: /backup
+      LEARNINGE_BACKUP_INTERVAL_HOURS: ${LEARNINGE_BACKUP_INTERVAL_HOURS:-24}
+      LEARNINGE_BACKUP_KEEP: ${LEARNINGE_BACKUP_KEEP:-14}
+    volumes:
+      - auth-data:/data-auth
+      - sync-data:/data-sync
+      - auth-backup:/backup          # một JVM nên hai kho sao lưu chung một chỗ, tên tệp phân biệt auth/sync
+      - ../content-data:/content-data:ro
+    healthcheck:
+      # Chế độ gộp không mở cổng quản trị; edge mở cổng sau cùng nên cổng mở là cả 6 dịch vụ đã lên.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/50051"]
+      interval: 5s
+      timeout: 4s
+      retries: 24
+      start_period: 90s
+    depends_on: !override
+      mongo: { condition: service_healthy }
+
+networks:
+  backend:
+    internal: true
+  public: {}
+
+volumes:
+  mongo-data: {}
+  auth-data: {}
+  sync-data: {}
+  auth-backup: {}

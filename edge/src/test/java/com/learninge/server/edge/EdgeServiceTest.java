@@ -17,15 +17,19 @@ import com.learninge.proto.app.v1.GetMeRequest;
 import com.learninge.proto.app.v1.GetMeResponse;
 import com.learninge.proto.app.v1.GetResetQuestionRequest;
 import com.learninge.proto.app.v1.LeaderboardServiceGrpc;
+import com.learninge.proto.app.v1.ListSessionsRequest;
 import com.learninge.proto.app.v1.LoginRequest;
 import com.learninge.proto.app.v1.LogoutRequest;
 import com.learninge.proto.app.v1.PullRequest;
 import com.learninge.proto.app.v1.PushRequest;
 import com.learninge.proto.app.v1.RegisterRequest;
 import com.learninge.proto.app.v1.ResetPasswordRequest;
+import com.learninge.proto.app.v1.RevokeOtherSessionsRequest;
+import com.learninge.proto.app.v1.RevokeSessionRequest;
 import com.learninge.proto.app.v1.SyncServiceGrpc;
 import com.learninge.proto.app.v1.WordData;
 import com.learninge.proto.internal.v1.AuthBackendGrpc;
+import com.learninge.proto.internal.v1.BackendListSessionsRequest;
 import com.learninge.proto.internal.v1.ContentBackendGrpc;
 import com.learninge.proto.internal.v1.ExportProfilesRequest;
 import com.learninge.proto.internal.v1.GamificationBackendGrpc;
@@ -35,12 +39,17 @@ import com.learninge.proto.internal.v1.LogRequestsRequest;
 import com.learninge.proto.internal.v1.SyncBackendGrpc;
 import com.learninge.proto.internal.v1.TokenValidatorGrpc;
 import com.learninge.proto.internal.v1.ValidateTokenRequest;
+import com.learninge.server.common.config.AppEnv;
+import com.learninge.server.common.config.Secret;
 import com.learninge.server.common.error.AppException;
 import com.learninge.server.common.error.ErrorCode;
+import com.learninge.server.common.grpc.InternalChannels;
 import com.learninge.server.common.grpc.MetadataKeys;
 import com.learninge.server.common.security.Digests;
 import com.learninge.server.common.testing.MutableClock;
 import com.learninge.server.common.testing.TestService;
+import com.learninge.server.edge.ops.DemoProperties;
+import com.learninge.server.edge.ops.DemoSeedCommand;
 import io.grpc.Channel;
 import io.grpc.ClientInterceptors;
 import io.grpc.Metadata;
@@ -66,6 +75,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.DefaultApplicationArguments;
 
 /**
  * TC-SRV-46..52, TC-RPC-23..30, TC-SVC-03..12: edge thật trước năm dịch vụ giả.
@@ -626,5 +636,60 @@ class EdgeServiceTest {
         assertThat(log.getRpc()).isEqualTo("learninge.app.v1.AuthService/GetMe");
         assertThat(log.getUserHmac()).isEqualTo("0123456789abcdef0123456789abcdef");
         assertThat(log.toString()).doesNotContain(USER, TOKEN, "127.0.0.1");
+    }
+
+    // --- Tài khoản demo -----------------------------------------------------------------------------
+
+    private DemoSeedCommand demo(boolean enabled, AppEnv env) {
+        return new DemoSeedCommand(
+                edge.bean(InternalChannels.class),
+                new DemoProperties(enabled, Secret.valueOf(enabled ? "demo-password-1" : "")),
+                env,
+                clock);
+    }
+
+    @Test
+    void demoSeedRegistersAndPushesAsEachUser() {
+        backends.on(AuthBackendGrpc.getRegisterMethod(), r -> FakeBackends.session());
+        demo(true, AppEnv.DEV).run(new DefaultApplicationArguments());
+        assertThat(backends.calls(AuthBackendGrpc.getRegisterMethod())).hasSize(10);
+        var pushes = backends.calls(SyncBackendGrpc.getPushMethod());
+        assertThat(pushes).hasSize(10);
+        assertThat(pushes).allMatch(p -> USER.equals(p.headers().get(MetadataKeys.USER_ID)));
+        assertThat(pushes).allMatch(p -> ((PushRequest) p.request()).getChangesCount() <= 500);
+
+        backends.received.clear();
+        backends.fail(AuthBackendGrpc.getRegisterMethod(), AppException.of(ErrorCode.EMAIL_TAKEN));
+        demo(true, AppEnv.DEV).run(new DefaultApplicationArguments());
+        assertThat(backends.calls(SyncBackendGrpc.getPushMethod())).isEmpty();
+    }
+
+    @Test
+    void demoSeedIsRefusedUnlessSwitchedOn() {
+        assertThatThrownBy(() -> demo(false, AppEnv.DEV).run(new DefaultApplicationArguments()))
+                .hasMessageContaining("LEARNINGE_DEMO_SEED");
+        assertThatThrownBy(() -> demo(true, AppEnv.PROD).run(new DefaultApplicationArguments()))
+                .hasMessageContaining("confirm-prod");
+        assertThat(backends.calls(AuthBackendGrpc.getRegisterMethod())).isEmpty();
+    }
+
+    // --- Phiên đăng nhập ----------------------------------------------------------------------------
+
+    @Test
+    void sessionCallsCarryTheCurrentTokenHashAndDropTheCache() {
+        auth(TOKEN).listSessions(ListSessionsRequest.getDefaultInstance());
+        var list = backends.calls(AuthBackendGrpc.getListSessionsMethod()).getFirst();
+        assertThat(((BackendListSessionsRequest) list.request()).getTokenSha256()).isEqualTo(sha256(TOKEN));
+
+        auth(TOKEN).revokeOtherSessions(RevokeOtherSessionsRequest.getDefaultInstance());
+        getMe(TOKEN);
+        assertThat(backends.calls(TokenValidatorGrpc.getValidateTokenMethod())).hasSize(2);
+
+        backends.fail(AuthBackendGrpc.getRevokeSessionMethod(), AppException.of(ErrorCode.NOT_FOUND));
+        assertFails(
+                () -> auth(TOKEN).revokeSession(RevokeSessionRequest.newBuilder().setId(7).build()),
+                ErrorCode.NOT_FOUND);
+        backends.revokeAll();
+        assertFails(() -> getMe(TOKEN), ErrorCode.UNAUTHENTICATED);
     }
 }

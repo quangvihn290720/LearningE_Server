@@ -9,14 +9,18 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.learninge.proto.app.v1.AuthSession;
 import com.learninge.proto.app.v1.ChangePasswordRequest;
 import com.learninge.proto.app.v1.DeleteAccountRequest;
+import com.learninge.proto.app.v1.DeviceSession;
 import com.learninge.proto.app.v1.GetResetQuestionRequest;
 import com.learninge.proto.app.v1.LoginRequest;
 import com.learninge.proto.app.v1.RegisterRequest;
 import com.learninge.proto.app.v1.ResetPasswordRequest;
+import com.learninge.proto.app.v1.RevokeSessionRequest;
 import com.learninge.proto.app.v1.UpdateMeRequest;
 import com.learninge.proto.internal.v1.AuthBackendGrpc;
 import com.learninge.proto.internal.v1.AuthBackendGrpc.AuthBackendBlockingStub;
+import com.learninge.proto.internal.v1.BackendListSessionsRequest;
 import com.learninge.proto.internal.v1.BackendLogoutRequest;
+import com.learninge.proto.internal.v1.BackendRevokeOtherSessionsRequest;
 import com.learninge.proto.internal.v1.Event;
 import com.learninge.proto.internal.v1.ExportProfilesRequest;
 import com.learninge.proto.internal.v1.GetProfileRequest;
@@ -317,11 +321,10 @@ class AuthServiceTest {
     }
 
     @Test
-    void tokenExpiresAfterThirtyDays() {
+    void unusedTokenExpiresAfterThirtyDays() {
         AuthSession session = register("minh@gmail.com", "minh01");
-        clock.advance(Duration.ofDays(30).minusSeconds(1));
         assertThat(validate(session.getToken()).getUserHmac()).matches("[0-9a-f]{32}");
-        clock.advance(Duration.ofSeconds(1));
+        clock.advance(Duration.ofDays(30));
         assertTokenRejected(session.getToken());
         assertTokenRejected("unknown");
     }
@@ -589,5 +592,94 @@ class AuthServiceTest {
                         () ->
                                 health.check(io.grpc.health.v1.HealthCheckRequest.getDefaultInstance()).getStatus()
                                         == io.grpc.health.v1.HealthCheckResponse.ServingStatus.SERVING);
+    }
+
+    // --- Phiên đăng nhập ----------------------------------------------------------------------------
+
+    private List<DeviceSession> sessions(AuthSession of) {
+        return authAs(of.getUser().getId())
+                .listSessions(
+                        BackendListSessionsRequest.newBuilder().setTokenSha256(sha256(of.getToken())).build())
+                .getSessionsList();
+    }
+
+    @Test
+    void sessionsInUseAreRenewedUntilTheirMaximumAge() {
+        AuthSession session = register("minh@gmail.com", "minh01");
+        for (int i = 0; i < 17; i++) {
+            clock.advance(Duration.ofDays(10));
+            assertThat(validate(session.getToken()).getExpiresAtMs())
+                    .isLessThanOrEqualTo(session.getUser().getCreatedAtMs() + Duration.ofDays(180).toMillis());
+        }
+        clock.advance(Duration.ofDays(10));
+        assertTokenRejected(session.getToken());
+    }
+
+    @Test
+    void renewalStartsPastHalfOfTheLifetime() {
+        AuthSession session = register("minh@gmail.com", "minh01");
+        clock.advance(Duration.ofDays(14));
+        assertThat(validate(session.getToken()).getExpiresAtMs()).isEqualTo(session.getExpiresAtMs());
+        clock.advance(Duration.ofDays(2));
+        assertThat(validate(session.getToken()).getExpiresAtMs())
+                .isEqualTo(clock.millis() + Duration.ofDays(30).toMillis());
+    }
+
+    @Test
+    void listsOwnSessionsMostRecentFirst() {
+        AuthSession phone = register("minh@gmail.com", "minh01");
+        AuthSession other = register("lan@gmail.com", "lan01");
+        clock.advance(Duration.ofDays(2));
+        AuthSession tablet = login("minh@gmail.com", PASSWORD);
+        assertThat(sessions(phone)).extracting(DeviceSession::getDeviceName).containsExactly("", "Pixel");
+        assertThat(sessions(phone)).extracting(DeviceSession::getCurrent).containsExactly(false, true);
+        clock.advance(Duration.ofDays(2));
+        validate(phone.getToken());
+        assertThat(sessions(tablet)).extracting(DeviceSession::getCurrent).containsExactly(false, true);
+        assertThat(sessions(tablet).getFirst().getLastUsedAtMs()).isEqualTo(clock.millis());
+        assertThat(sessions(other)).hasSize(1);
+    }
+
+    @Test
+    void revokesOneSessionButNeverSomeoneElses() {
+        AuthSession phone = register("minh@gmail.com", "minh01");
+        AuthSession tablet = login("minh@gmail.com", PASSWORD);
+        AuthSession other = register("lan@gmail.com", "lan01");
+        long tabletId =
+                sessions(phone).stream().filter(s -> !s.getCurrent()).findFirst().orElseThrow().getId();
+        RevokeSessionRequest request = RevokeSessionRequest.newBuilder().setId(tabletId).build();
+        assertFails(() -> authAs(other.getUser().getId()).revokeSession(request), ErrorCode.NOT_FOUND);
+        validate(tablet.getToken());
+        authAs(phone.getUser().getId()).revokeSession(request);
+        assertTokenRejected(tablet.getToken());
+        validate(phone.getToken());
+        assertFails(() -> authAs(phone.getUser().getId()).revokeSession(request), ErrorCode.NOT_FOUND);
+    }
+
+    @Test
+    void revokesEveryOtherSession() {
+        AuthSession phone = register("minh@gmail.com", "minh01");
+        AuthSession tablet = login("minh@gmail.com", PASSWORD);
+        AuthSession laptop = login("minh@gmail.com", PASSWORD);
+        AuthSession other = register("lan@gmail.com", "lan01");
+        var response =
+                authAs(phone.getUser().getId())
+                        .revokeOtherSessions(
+                                BackendRevokeOtherSessionsRequest.newBuilder()
+                                        .setTokenSha256(sha256(phone.getToken()))
+                                        .build());
+        assertThat(response.getRevoked()).isEqualTo(2);
+        assertTokenRejected(tablet.getToken());
+        assertTokenRejected(laptop.getToken());
+        validate(phone.getToken());
+        validate(other.getToken());
+    }
+
+    @Test
+    void afterARestoreEveryDeviceMustLogInAgain() {
+        AuthSession phone = register("minh@gmail.com", "minh01");
+        service.bean(com.learninge.server.auth.store.TokenStore.class).revokeAllUsers(clock.millis());
+        assertTokenRejected(phone.getToken());
+        validate(login("minh@gmail.com", PASSWORD).getToken());
     }
 }

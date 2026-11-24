@@ -10,16 +10,24 @@ import com.learninge.proto.app.v1.GetMeRequest;
 import com.learninge.proto.app.v1.GetMeResponse;
 import com.learninge.proto.app.v1.GetResetQuestionRequest;
 import com.learninge.proto.app.v1.GetResetQuestionResponse;
+import com.learninge.proto.app.v1.ListSessionsRequest;
+import com.learninge.proto.app.v1.ListSessionsResponse;
 import com.learninge.proto.app.v1.LoginRequest;
 import com.learninge.proto.app.v1.LogoutRequest;
 import com.learninge.proto.app.v1.LogoutResponse;
 import com.learninge.proto.app.v1.RegisterRequest;
 import com.learninge.proto.app.v1.ResetPasswordRequest;
+import com.learninge.proto.app.v1.RevokeOtherSessionsRequest;
+import com.learninge.proto.app.v1.RevokeOtherSessionsResponse;
+import com.learninge.proto.app.v1.RevokeSessionRequest;
+import com.learninge.proto.app.v1.RevokeSessionResponse;
 import com.learninge.proto.app.v1.UpdateMeRequest;
 import com.learninge.proto.app.v1.UpdateMeResponse;
 import com.learninge.proto.internal.v1.AuthBackendGrpc;
 import com.learninge.proto.internal.v1.AuthBackendGrpc.AuthBackendBlockingStub;
+import com.learninge.proto.internal.v1.BackendListSessionsRequest;
 import com.learninge.proto.internal.v1.BackendLogoutRequest;
+import com.learninge.proto.internal.v1.BackendRevokeOtherSessionsRequest;
 import com.learninge.server.common.grpc.CallerContext;
 import com.learninge.server.common.grpc.InternalChannels;
 import com.learninge.server.common.grpc.Unary;
@@ -104,6 +112,45 @@ public final class AuthForwarder extends AuthServiceGrpc.AuthServiceImplBase {
         AuthSession session = Downstream.call(() -> auth().resetPassword(request));
         tokens.invalidateUser(session.getUser().getId());
         Unary.reply(observer, session);
+    }
+
+    @Override
+    public void listSessions(
+            ListSessionsRequest request, StreamObserver<ListSessionsResponse> observer) {
+        BackendListSessionsRequest internal =
+                BackendListSessionsRequest.newBuilder()
+                        .setTokenSha256(Identity.KEY.get().tokenSha256())
+                        .build();
+        Unary.reply(observer, Downstream.call(() -> auth().listSessions(internal)));
+    }
+
+    @Override
+    public void revokeSession(
+            RevokeSessionRequest request, StreamObserver<RevokeSessionResponse> observer) {
+        RevokeSessionResponse response;
+        try {
+            response = Downstream.call(() -> auth().revokeSession(request));
+        } finally {
+            tokens.invalidateUser(CallerContext.userId());
+        }
+        Unary.reply(observer, response);
+    }
+
+    @Override
+    public void revokeOtherSessions(
+            RevokeOtherSessionsRequest request,
+            StreamObserver<RevokeOtherSessionsResponse> observer) {
+        BackendRevokeOtherSessionsRequest internal =
+                BackendRevokeOtherSessionsRequest.newBuilder()
+                        .setTokenSha256(Identity.KEY.get().tokenSha256())
+                        .build();
+        RevokeOtherSessionsResponse response;
+        try {
+            response = Downstream.call(() -> auth().revokeOtherSessions(internal));
+        } finally {
+            tokens.invalidateUser(CallerContext.userId());
+        }
+        Unary.reply(observer, response);
     }
 
     @Override
