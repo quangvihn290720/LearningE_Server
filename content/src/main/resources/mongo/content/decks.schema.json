@@ -12,6 +12,7 @@
     "sort_order": { "bsonType": "int" },
     "version": { "bsonType": "int", "minimum": 1 },
     "word_count": { "bsonType": "int", "minimum": 0 },
+    "retired": { "bsonType": "bool" },
     "updated_at": { "bsonType": "date" }
   }
 }

@@ -129,7 +129,7 @@ public final class ContentStore {
 
     public static Document deckDocument(DeckFile file, Instant now) {
         Deck deck = file.deck();
-        return new Document("_id", deck.code())
+        Document document = new Document("_id", deck.code())
                 .append("name", deck.name())
                 .append("description", deck.description())
                 .append("language_code", deck.language())
@@ -140,6 +140,7 @@ public final class ContentStore {
                 .append("version", deck.version())
                 .append("word_count", file.words().size())
                 .append("updated_at", Date.from(now));
+        return retired(document, deck.isRetired());
     }
 
     public static List<Document> wordDocuments(DeckFile file) {
@@ -174,7 +175,7 @@ public final class ContentStore {
                                                 .append("explanation", q.explanation())
                                                 .append("word_uid", ContentValidator.wordUid(bundle, q).orElse(null)))
                         .toList();
-        return new Document("_id", exam.code())
+        Document document = new Document("_id", exam.code())
                 .append("exam_tag", exam.examTag())
                 .append("title", exam.title())
                 .append("part_label", exam.partLabel())
@@ -185,5 +186,13 @@ public final class ContentStore {
                 .append("version", exam.version())
                 .append("updated_at", Date.from(now))
                 .append("questions", questions);
+        return retired(document, exam.isRetired());
+    }
+
+    /**
+     * Chỉ ghi khi đã ngừng dùng, để tài liệu nạp từ trước vẫn so khớp với file.
+     */
+    private static Document retired(Document document, boolean retired) {
+        return retired ? document.append("retired", true) : document;
     }
 }

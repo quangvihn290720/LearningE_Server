@@ -24,7 +24,14 @@ public record ContentBundle(List<Language> languages, List<DeckFile> decks, List
             String icon,
             String level,
             String examTag,
-            int sortOrder) {
+            int sortOrder,
+            Boolean retired) {
+        /**
+         * Ngừng dùng: app ẩn bộ nhưng giữ tiến độ. Thay cho việc xóa file.
+         */
+        public boolean isRetired() {
+            return Boolean.TRUE.equals(retired);
+        }
     }
 
     public record Word(
@@ -37,7 +44,7 @@ public record ContentBundle(List<Language> languages, List<DeckFile> decks, List
             String exampleTranslation) {
     }
 
-    public record ExamFile(List<Exam> tests) {
+    public record ExamFile(String source, List<Exam> tests) {
     }
 
     public record Exam(
@@ -49,7 +56,11 @@ public record ContentBundle(List<Language> languages, List<DeckFile> decks, List
             int durationSec,
             String description,
             int sortOrder,
-            List<Question> questions) {
+            List<Question> questions,
+            Boolean retired) {
+        public boolean isRetired() {
+            return Boolean.TRUE.equals(retired);
+        }
     }
 
     /**

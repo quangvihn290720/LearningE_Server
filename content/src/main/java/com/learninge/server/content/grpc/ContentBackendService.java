@@ -110,7 +110,8 @@ public final class ContentBackendService extends ContentBackendGrpc.ContentBacke
                         .setName(d.getString("name"))
                         .setLanguageCode(d.getString("language_code"))
                         .setSortOrder(d.getInteger("sort_order"))
-                        .setVersion(d.getInteger("version"));
+                        .setVersion(d.getInteger("version"))
+                        .setRetired(d.getBoolean("retired", false));
         optional(d, "description", deck::setDescription);
         optional(d, "level", deck::setLevel);
         optional(d, "icon", deck::setIcon);
@@ -141,7 +142,8 @@ public final class ContentBackendService extends ContentBackendGrpc.ContentBacke
                         .setQuestionCount(d.getInteger("question_count"))
                         .setDurationSec(d.getInteger("duration_sec"))
                         .setSortOrder(d.getInteger("sort_order"))
-                        .setVersion(d.getInteger("version"));
+                        .setVersion(d.getInteger("version"))
+                        .setRetired(d.getBoolean("retired", false));
         optional(d, "exam_tag", exam::setExamTag);
         optional(d, "part_label", exam::setPartLabel);
         optional(d, "description", exam::setDescription);

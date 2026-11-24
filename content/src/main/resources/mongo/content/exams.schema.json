@@ -11,6 +11,7 @@
     "duration_sec": { "bsonType": "int", "minimum": 60 },
     "sort_order": { "bsonType": "int" },
     "version": { "bsonType": "int", "minimum": 1 },
+    "retired": { "bsonType": "bool" },
     "updated_at": { "bsonType": "date" },
     "questions": { "bsonType": "array", "minItems": 1, "maxItems": 50, "items": {
       "bsonType": "object", "additionalProperties": false,

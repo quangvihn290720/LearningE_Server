@@ -12,8 +12,11 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Stream;
 
 import org.bson.Document;
 
@@ -51,6 +54,18 @@ public final class ContentImporter {
                 bundle.decks().stream().filter(d -> needsImport(d, problems)).toList();
         List<Exam> newExams =
                 bundle.exams().stream().filter(e -> needsImport(bundle, e, problems)).toList();
+        Set<String> present = new HashSet<>();
+        bundle.decks().forEach(d -> present.add(d.deck().code()));
+        bundle.exams().forEach(e -> present.add(e.code()));
+        Stream.concat(store.decks().stream(), store.examHeaders().stream())
+                .map(d -> d.getString("_id"))
+                .filter(code -> !present.contains(code))
+                .forEach(
+                        code ->
+                                problems.add(
+                                        code
+                                                + ": đã từng nạp nhưng không còn trong file; muốn ẩn thì giữ lại và"
+                                                + " đặt \"retired\": true"));
         failIfAny(problems);
 
         Instant now = clock.instant();
