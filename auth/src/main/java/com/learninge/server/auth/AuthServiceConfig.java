@@ -17,21 +17,20 @@ import com.learninge.server.auth.store.UserStore;
 import com.learninge.server.common.config.InternalServerConfiguration;
 import com.learninge.server.common.config.LearningeProperties;
 import com.learninge.server.common.config.SecretKeys;
-import com.learninge.server.common.grpc.ErrorMappingInterceptor;
 import com.learninge.server.common.ops.BackgroundTasks;
 import com.learninge.server.common.outbox.OutboxConfiguration;
 import com.learninge.server.common.outbox.OutboxConfiguration.EventSource;
 import com.learninge.server.common.outbox.OutboxWriter;
 import com.learninge.server.common.security.SlidingWindowLimiter;
 import com.learninge.server.common.security.UserPseudonym;
-import com.learninge.server.common.sqlite.SqliteBackupCommand;
+import com.learninge.server.common.sqlite.SqliteConfiguration;
 import com.learninge.server.common.sqlite.SqliteDatabase;
-import com.learninge.server.common.sqlite.SqliteErrors;
-import com.learninge.server.common.sqlite.SqliteHealthIndicator;
+import com.learninge.server.common.sqlite.SqliteRestore;
 
 import java.time.Clock;
 import java.time.Duration;
 
+import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -42,22 +41,14 @@ import org.springframework.context.annotation.Import;
  */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(AuthProperties.class)
-@Import({InternalServerConfiguration.class, OutboxConfiguration.class})
+@Import({InternalServerConfiguration.class, SqliteConfiguration.class, OutboxConfiguration.class})
 public class AuthServiceConfig {
 
     @Bean
-    SqliteDatabase database(AuthProperties properties) {
+    SqliteDatabase database(
+            AuthProperties properties, ApplicationArguments arguments, Clock clock) {
+        SqliteRestore.replaceIfRequested(arguments, properties.dbPath(), clock);
         return SqliteDatabase.open(properties.dbPath(), "db/migration/auth");
-    }
-
-    @Bean
-    SqliteHealthIndicator sqliteHealthIndicator(SqliteDatabase database) {
-        return new SqliteHealthIndicator(database);
-    }
-
-    @Bean
-    ErrorMappingInterceptor.Translator sqliteErrorTranslator() {
-        return SqliteErrors::translate;
     }
 
     @Bean
@@ -65,9 +56,12 @@ public class AuthServiceConfig {
         return new EventSource(AuthApplication.NAME);
     }
 
+    /**
+     * Bản sao lưu có thể chứa phiên đã đăng xuất sau đó: buộc mọi máy đăng nhập lại.
+     */
     @Bean
-    SqliteBackupCommand backupCommand(SqliteDatabase database, Clock clock) {
-        return new SqliteBackupCommand(database, AuthApplication.NAME, clock);
+    SqliteRestore restoreCommand(SqliteDatabase database, TokenStore tokens, Clock clock) {
+        return new SqliteRestore(database, () -> tokens.revokeAllUsers(clock.millis()));
     }
 
     @Bean
@@ -108,8 +102,10 @@ public class AuthServiceConfig {
     }
 
     @Bean
-    SessionService sessionService(TokenStore tokens, AuthProperties properties, Clock clock) {
-        return new SessionService(tokens, properties.tokenTtl(), clock);
+    SessionService sessionService(
+            TokenStore tokens, AuthProperties properties, Clock clock) {
+        return new SessionService(
+                tokens, properties.tokenTtl(), properties.tokenMaxAge(), clock);
     }
 
     @Bean

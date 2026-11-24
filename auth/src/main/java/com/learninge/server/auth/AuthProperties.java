@@ -12,7 +12,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @ConfigurationProperties("learninge.auth")
 public record AuthProperties(
-        Path dbPath, Secret serverKey, Secret pseudonymKey, int tokenTtlDays, int maxConcurrentHashes) {
+        Path dbPath, Secret serverKey, Secret pseudonymKey, int tokenTtlDays, int tokenMaxAgeDays, int maxConcurrentHashes) {
+
+    public Duration tokenMaxAge() {
+        return Duration.ofDays(tokenMaxAgeDays);
+    }
 
     public Duration tokenTtl() {
         return Duration.ofDays(tokenTtlDays);

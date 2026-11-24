@@ -11,6 +11,10 @@ learninge:
     sync: ${SYNC_ADDR:localhost:50053}
     gamification: ${GAMIFICATION_ADDR:localhost:50055}
     insight: ${INSIGHT_ADDR:localhost:50056}
+  backup:
+    dir: ${LEARNINGE_BACKUP_DIR:}
+    interval-hours: ${LEARNINGE_BACKUP_INTERVAL_HOURS:24}
+    keep: ${LEARNINGE_BACKUP_KEEP:14}
   outbox:
     batch: ${OUTBOX_BATCH:200}
     max-backoff-secs: ${OUTBOX_MAX_BACKOFF_SECS:15}
@@ -19,5 +23,6 @@ learninge:
     db-path: ${AUTH_DB_PATH:./data/auth.db}
     server-key: ${LEARNINGE_SERVER_KEY:}
     pseudonym-key: ${LEARNINGE_PSEUDONYM_KEY:}
-    token-ttl-days: ${TOKEN_TTL_DAYS:30}
+    token-ttl-days: ${TOKEN_TTL_DAYS:30}            # không dùng trong khoảng này thì phải đăng nhập lại
+    token-max-age-days: ${TOKEN_MAX_AGE_DAYS:180}   # dùng đều vẫn phải đăng nhập lại sau khoảng này
     max-concurrent-hashes: ${PBKDF2_MAX_CONCURRENT:4}
