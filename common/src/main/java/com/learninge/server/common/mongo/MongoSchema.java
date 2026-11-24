@@ -1,5 +1,6 @@
 package com.learninge.server.common.mongo;
 
+import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.CreateCollectionOptions;
 import com.mongodb.client.model.ReplaceOptions;
@@ -58,11 +59,26 @@ public final class MongoSchema {
             if (!spec.indexes().isEmpty()) {
                 database.getCollection(spec.name()).createIndexes(spec.indexes());
             }
+            dropObsolete(database.getCollection(spec.name()), spec.obsoleteIndexes());
         }
         Document meta = new Document("_id", "schema").append("version", VERSION);
         database
                 .getCollection("meta")
                 .replaceOne(new Document("_id", "schema"), meta, new ReplaceOptions().upsert(true));
+    }
+
+    /**
+     * Sau khi đã có index mới, để truy vấn không lúc nào thiếu index.
+     */
+    private static void dropObsolete(MongoCollection<Document> collection, List<String> names) {
+        if (names.isEmpty()) {
+            return;
+        }
+        for (Document index : collection.listIndexes().into(new ArrayList<>())) {
+            if (names.contains(index.getString("name"))) {
+                collection.dropIndex(index.getString("name"));
+            }
+        }
     }
 
     private Document load(String collection) {

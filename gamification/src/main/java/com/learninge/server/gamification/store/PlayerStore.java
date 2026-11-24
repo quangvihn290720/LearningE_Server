@@ -12,8 +12,10 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -75,7 +77,13 @@ public final class PlayerStore {
     }
 
     public boolean isDeleted(String userId) {
-        return deleted.find(Filters.eq("_id", userId)).first() != null;
+        return !deletedAmong(Set.of(userId)).isEmpty();
+    }
+
+    public Set<String> deletedAmong(Set<String> userIds) {
+        Set<String> found = new HashSet<>();
+        deleted.find(Filters.in("_id", userIds)).forEach(d -> found.add(d.getString("_id")));
+        return found;
     }
 
     /**

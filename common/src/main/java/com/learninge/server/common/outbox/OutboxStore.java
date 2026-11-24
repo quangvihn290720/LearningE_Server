@@ -3,6 +3,7 @@ package com.learninge.server.common.outbox;
 import com.learninge.server.common.sqlite.SqliteDatabase;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 
@@ -72,24 +73,45 @@ public final class OutboxStore {
                 .single();
     }
 
+    /**
+     * Lúc tạo của dòng đang đứng đầu hàng; rỗng khi không còn gì chờ.
+     */
+    Optional<Long> oldestPending(Destination destination) {
+        return database
+                .reader()
+                .sql(
+                        """
+                                SELECT created_at FROM outbox
+                                WHERE destination = ? AND published_at IS NULL AND dead_at IS NULL
+                                ORDER BY id LIMIT 1
+                                """)
+                .param(destination.id())
+                .query(Long.class)
+                .optional();
+    }
+
     void markPublished(List<OutboxRow> rows, long now) {
-        update(rows, "UPDATE outbox SET published_at = ? WHERE id = ?", now);
+        if (rows.isEmpty()) {
+            return;
+        }
+        writer()
+                .sql("UPDATE outbox SET published_at = :now WHERE id IN (:ids)")
+                .param("now", now)
+                .param("ids", ids(rows))
+                .update();
     }
 
     void markFailed(List<OutboxRow> rows, long nextAttemptAt, String error) {
-        database.inWriteTx(
-                () -> {
-                    for (OutboxRow row : rows) {
-                        writer()
-                                .sql(
-                                        """
-                                                UPDATE outbox SET attempts = attempts + 1, next_attempt_at = ?, last_error = ?
-                                                WHERE id = ?
-                                                """)
-                                .params(nextAttemptAt, error, row.id())
-                                .update();
-                    }
-                });
+        writer()
+                .sql(
+                        """
+                                UPDATE outbox SET attempts = attempts + 1, next_attempt_at = :next, last_error = :error
+                                WHERE id IN (:ids)
+                                """)
+                .param("next", nextAttemptAt)
+                .param("error", error)
+                .param("ids", ids(rows))
+                .update();
     }
 
     void markDead(OutboxRow row, long now, String error) {
@@ -129,13 +151,8 @@ public final class OutboxStore {
                 .update();
     }
 
-    private void update(List<OutboxRow> rows, String sql, long now) {
-        database.inWriteTx(
-                () -> {
-                    for (OutboxRow row : rows) {
-                        writer().sql(sql).params(now, row.id()).update();
-                    }
-                });
+    private static List<Long> ids(List<OutboxRow> rows) {
+        return rows.stream().map(OutboxRow::id).toList();
     }
 
     private JdbcClient writer() {

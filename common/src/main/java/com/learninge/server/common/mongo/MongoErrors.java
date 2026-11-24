@@ -2,6 +2,7 @@ package com.learninge.server.common.mongo;
 
 import com.learninge.server.common.error.AppException;
 import com.learninge.server.common.error.ErrorCode;
+import com.mongodb.MongoBulkWriteException;
 import com.mongodb.MongoException;
 import com.mongodb.MongoServerException;
 import org.slf4j.Logger;
@@ -21,13 +22,20 @@ public final class MongoErrors {
     }
 
     public static AppException translate(RuntimeException error) {
-        if (error instanceof MongoException mongo && mongo.getCode() == VALIDATION_FAILURE) {
+        if (isValidationFailure(error)) {
             log.error("Validator MongoDB từ chối tài liệu", error);
             return AppException.of(ErrorCode.VALIDATION_ERROR);
         }
         boolean unreachable =
                 error instanceof MongoException && !(error instanceof MongoServerException);
         return unreachable ? AppException.of(ErrorCode.SERVICE_UNAVAILABLE) : null;
+    }
+
+    private static boolean isValidationFailure(RuntimeException error) {
+        if (error instanceof MongoBulkWriteException bulk) {
+            return bulk.getWriteErrors().stream().anyMatch(e -> e.getCode() == VALIDATION_FAILURE);
+        }
+        return error instanceof MongoException mongo && mongo.getCode() == VALIDATION_FAILURE;
     }
 
     public static boolean isDuplicateKey(MongoException error) {
