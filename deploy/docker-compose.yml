@@ -10,8 +10,14 @@ x-jvm: &jvm >-
   -Djdk.serialFilter=!* -Dorg.sqlite.tmpdir=/app/native -Dio.netty.native.workdir=/app/native
   -Djava.io.tmpdir=/tmp
 
+# Log container không được phép làm đầy đĩa (NFR-E5): tối đa 30 MB mỗi container.
+x-logging: &logging
+  driver: json-file
+  options: { max-size: 10m, max-file: "3" }
+
 x-service: &service
   restart: unless-stopped
+  logging: *logging
   user: "10001:10001"
   read_only: true
   tmpfs:
@@ -51,6 +57,7 @@ services:
   mongo:
     image: mongo:8.0.38@sha256:479e85ced54ffb8a40dade1dcde2da2a9ae858515b9415e9cc54bfb8f0575d01   # < 8.0.38 không chạy trên kernel ≥ 6.19 (SERVER-121912)
     restart: unless-stopped
+    logging: *logging
     command: ["mongod", "--auth", "--wiredTigerCacheSizeGB", "0.25", "--bind_ip_all"]
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
@@ -77,6 +84,8 @@ services:
     build: { context: .., dockerfile: deploy/Dockerfile, args: { SERVICE: auth } }
     environment:
       <<: *env
+      # Băm mật khẩu cần trình biên dịch C2: 30 ms thay vì 270 ms. Biến này đè lên cờ chung ở trên.
+      JDK_JAVA_OPTIONS: -XX:TieredStopAtLevel=4
       AUTH_DB_PATH: /data/auth.db
       LEARNINGE_SERVER_KEY: ${LEARNINGE_SERVER_KEY:?}
       LEARNINGE_PSEUDONYM_KEY: ${LEARNINGE_PSEUDONYM_KEY:?}
@@ -142,7 +151,8 @@ services:
       GAMIFICATION_ADDR: gamification:50055
       INSIGHT_ADDR: insight:50056
       EDGE_TRUST_PROXY: ${EDGE_TRUST_PROXY:-false}
-      EDGE_TRUSTED_PROXIES: ${EDGE_TRUSTED_PROXIES:-127.0.0.0/8,::1/128}
+      EDGE_TRUSTED_PROXIES: ${EDGE_TRUSTED_PROXIES:-127.0.0.0/8,::1/128,172.16.0.0/12}
+      EDGE_CLIENT_IP_HEADER: ${EDGE_CLIENT_IP_HEADER:-x-forwarded-for}
       EDGE_MIN_CLIENT: ${EDGE_MIN_CLIENT:-1}
       LEARNINGE_GRPC_REFLECTION: ${LEARNINGE_GRPC_REFLECTION:-false}
     networks: [backend, public]
