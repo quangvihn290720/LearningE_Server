@@ -4,7 +4,7 @@ spring:
       port: ${LISTEN_PORT:50051}
       inbound:
         message:
-          max-size: 1MB
+          max-size: 2MB      # PayloadLimitInterceptor từ chối từ 1 MiB, kèm mã lỗi
       reflection:
         enabled: ${LEARNINGE_GRPC_REFLECTION:false}
       health:
@@ -24,6 +24,7 @@ learninge:
   edge:
     trust-proxy: ${EDGE_TRUST_PROXY:false}
     trusted-proxies: ${EDGE_TRUSTED_PROXIES:127.0.0.0/8,::1/128}
+    client-ip-header: ${EDGE_CLIENT_IP_HEADER:x-forwarded-for}   # sau Cloudflare: cf-connecting-ip
     min-client: ${EDGE_MIN_CLIENT:1}
     token-cache-secs: ${EDGE_TOKEN_CACHE_SECS:60}
     reflection: ${LEARNINGE_GRPC_REFLECTION:false}

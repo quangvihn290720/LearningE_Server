@@ -16,9 +16,11 @@ import io.grpc.ServerInterceptor;
  */
 public final class AuthenticationInterceptor implements ServerInterceptor {
     private final TokenAuthenticator tokens;
+    private final ClientIpResolver ips;
 
-    public AuthenticationInterceptor(TokenAuthenticator tokens) {
+    public AuthenticationInterceptor(TokenAuthenticator tokens, ClientIpResolver ips) {
         this.tokens = tokens;
+        this.ips = ips;
     }
 
     @Override
@@ -29,7 +31,7 @@ public final class AuthenticationInterceptor implements ServerInterceptor {
         }
         Identity identity;
         try {
-            identity = tokens.authenticate(headers);
+            identity = tokens.authenticate(headers, ips.resolve(call.getAttributes(), headers));
         } catch (AppException e) {
             return GrpcErrors.reject(call, e);
         }

@@ -388,11 +388,40 @@ class EdgeServiceTest {
                         .addChanges(
                                 Change.newBuilder().setWord(WordData.newBuilder().setTerm("x".repeat(1 << 20))))
                         .build();
-        assertThatThrownBy(() -> sync(TOKEN).push(huge))
+        assertFails(() -> sync(TOKEN).push(huge), ErrorCode.PAYLOAD_TOO_LARGE);
+        PushRequest transportLimit = huge.toBuilder().addChanges(huge.getChanges(0)).build();
+        assertThatThrownBy(() -> sync(TOKEN).push(transportLimit))
                 .isInstanceOfSatisfying(
                         StatusRuntimeException.class,
                         e -> assertThat(e.getStatus().getCode()).isEqualTo(Status.Code.RESOURCE_EXHAUSTED));
         assertThat(backends.calls(SyncBackendGrpc.getPushMethod())).isEmpty();
+    }
+
+    @Test
+    void acceptsMessagesUpToOneMebibyte() {
+        sync(TOKEN)
+                .push(
+                        PushRequest.newBuilder()
+                                .addChanges(
+                                        Change.newBuilder()
+                                                .setWord(WordData.newBuilder().setTerm("x".repeat((1 << 20) - 100))))
+                                .build());
+        assertThat(backends.calls(SyncBackendGrpc.getPushMethod())).hasSize(1);
+    }
+
+    @Test
+    void guessingTokensStopsReachingAuthButCachedUsersAreUnaffected() {
+        getMe(TOKEN);
+        for (int i = 0; i < 60; i++) {
+            String guess = "guess" + String.format("%038d", i);
+            assertFails(() -> getMe(guess), ErrorCode.UNAUTHENTICATED);
+        }
+        int asked = backends.calls(TokenValidatorGrpc.getValidateTokenMethod()).size();
+        assertFails(() -> getMe("z".repeat(43)), ErrorCode.RATE_LIMITED);
+        assertThat(backends.calls(TokenValidatorGrpc.getValidateTokenMethod())).hasSize(asked);
+        getMe(TOKEN);
+        clock.advance(Duration.ofSeconds(61));
+        assertFails(() -> getMe("z".repeat(43)), ErrorCode.UNAUTHENTICATED);
     }
 
     @Test
