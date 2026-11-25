@@ -52,8 +52,8 @@ public class SyncServiceConfig {
      * Số thứ tự của bản sao lưu bị lùi so với máy người dùng: nhảy lên và báo kỷ nguyên mới.
      */
     @Bean
-    SqliteRestore restoreCommand(SqliteDatabase database, SyncTables tables) {
-        return new SqliteRestore(database, () -> tables.startNewEpoch());
+    SqliteRestore restoreCommand(SqliteDatabase database, SyncTables tables, Clock clock) {
+        return new SqliteRestore(database, () -> tables.startNewEpoch(clock.millis()));
     }
 
     @Bean

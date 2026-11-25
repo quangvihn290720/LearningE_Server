@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
  */
 public final class SyncTables {
     private static final long SEQ_JUMP = 1_000_000_000L;
+    private static final long SEQ_PER_MILLI = 1_000L;
 
     public final SettingsTable settings = new SettingsTable();
     public final DeckTable decks = new DeckTable();
@@ -67,11 +68,13 @@ public final class SyncTables {
     /**
      * Sau khi khôi phục: máy người dùng có thể giữ mốc cao hơn số thứ tự của bản sao lưu. Nhảy qua mọi
      * mốc đã cấp thì không thay đổi mới nào bị bỏ sót; kỷ nguyên mới báo app đẩy lại dữ liệu của mình.
+     * Cả hai tính theo thời điểm khôi phục, không theo bản sao lưu: khôi phục hai lần từ cùng một bản vẫn
+     * ra kỷ nguyên và mốc khác nhau.
      */
-    public void startNewEpoch() {
+    public void startNewEpoch(long now) {
         writer()
-                .sql("UPDATE sync_seq SET value = value + ?, epoch = epoch + 1 WHERE id = 1")
-                .param(SEQ_JUMP)
+                .sql("UPDATE sync_seq SET value = max(value + ?, ?), epoch = max(epoch + 1, ?) WHERE id = 1")
+                .params(SEQ_JUMP, now * SEQ_PER_MILLI, now)
                 .update();
     }
 

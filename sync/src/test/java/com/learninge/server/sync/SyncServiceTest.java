@@ -41,12 +41,14 @@ import com.learninge.server.common.sqlite.SqliteDatabase;
 import com.learninge.server.common.sqlite.SqliteRestore;
 import com.learninge.server.common.testing.MutableClock;
 import com.learninge.server.common.testing.TestService;
+import com.learninge.server.sync.store.SyncTables;
 
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
@@ -733,6 +735,30 @@ class SyncServiceTest {
         push(A, card("T01-0009", 1, clock.millis()));
         PullResponse after = pull(A, before.getNextCursor(), 0);
         assertThat(after.getChangesList()).extracting(Change::getRecordId).containsExactly("T01-0009");
-        assertThat(after.getDataEpoch()).isEqualTo(before.getDataEpoch() + 1);
+        assertThat(after.getDataEpoch()).isGreaterThan(before.getDataEpoch());
+    }
+
+    /**
+     * Bản sao lưu cũ không biết lần khôi phục trước: cộng vào số của nó sẽ ra lại đúng mốc và kỷ nguyên cũ.
+     */
+    @Test
+    void restoringTheSameBackupTwiceIsStillNoticed() {
+        SyncTables tables = service.bean(SyncTables.class);
+        push(A, card("T01-0001", 1, clock.millis()));
+        Map<String, Object> inBackup = tables.writer().sql("SELECT value, epoch FROM sync_seq").query().singleRow();
+        db.inWriteTx(() -> tables.startNewEpoch(clock.millis()));
+        push(A, card("T01-0002", 1, clock.millis()));
+        PullResponse first = pull(A, 0, 0);
+
+        clock.advance(Duration.ofMinutes(1));
+        db.inWriteTx(() -> {
+            tables.writer().sql("UPDATE sync_seq SET value = ?, epoch = ?")
+                    .params(inBackup.get("value"), inBackup.get("epoch")).update();
+            tables.startNewEpoch(clock.millis());
+        });
+        push(A, card("T01-0003", 1, clock.millis()));
+        PullResponse second = pull(A, first.getNextCursor(), 0);
+        assertThat(second.getDataEpoch()).isGreaterThan(first.getDataEpoch());
+        assertThat(second.getChangesList()).extracting(Change::getRecordId).containsExactly("T01-0003");
     }
 }

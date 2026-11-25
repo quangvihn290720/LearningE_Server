@@ -83,7 +83,9 @@ khác. Lùi 2, 4, 8, 15 s; đích sống lại thì xả ngay. Sự kiện bị 
 - **Vì sao `gamification` xử lý theo cụm 50?** Tính lại XP tuần một lần cho mỗi người thay vì mỗi sự kiện, và để MongoDB
   cộng sẵn bằng index chứa đủ trường. Đo được: 10.000 sự kiện tồn đọng xả trong khoảng 10 giây (trước đó 88 giây).
 - **Vì sao khôi phục `sync.db` phải nhảy số thứ tự?** Máy người dùng nhớ mốc đã kéo, ví dụ 1.000. Bản sao lưu chỉ tới 900
-  thì thay đổi mới nhận số 901 và máy đó không bao giờ thấy. `SyncTables.startNewEpoch` nhảy qua mọi mốc đã cấp.
+  thì thay đổi mới nhận số 901 và máy đó không bao giờ thấy. `SyncTables.startNewEpoch` nhảy qua mọi mốc đã cấp. Mốc
+  mới tính theo giờ khôi phục chứ không cộng vào bản sao lưu: nếu cộng, khôi phục hai lần từ cùng một bản sẽ ra
+  cùng một mốc và app không nhận ra.
 - **Vì sao phiên đăng nhập tự gia hạn?** Người học đều mỗi ngày không nên bị đăng xuất giữa chừng. `SessionService` gia hạn
   khi đã qua nửa hạn, tối đa 180 ngày; bỏ không 30 ngày vẫn hết hạn. Ghi nhiều nhất một lần mỗi ngày cho mỗi phiên.
 - **Vì sao `synchronous = FULL`?** App đánh dấu "đã đồng bộ" khi nhận trả lời, nên commit xong không được mất khi mất điện.
