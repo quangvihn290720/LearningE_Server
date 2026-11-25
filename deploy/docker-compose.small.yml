@@ -1,6 +1,7 @@
 # Máy nhỏ (VPS 2 GB): MongoDB + một JVM chạy cả 6 dịch vụ, khoảng 1 GB RAM. Cùng volume với docker-compose.yml
 # nên chuyển qua lại không mất dữ liệu (phải "down" bản kia trước).
 #   docker compose -f deploy/docker-compose.small.yml up --build -d --wait
+# Trên VPS: deploy/deploy.sh kéo image CI đã dựng, không biên dịch trên máy.
 name: learninge
 
 services:
@@ -10,7 +11,7 @@ services:
   # Giữ tên "edge" để docker-compose.tls.yml dùng chung được.
   edge:
     extends: { file: docker-compose.yml, service: edge }
-    image: learninge/all-in-one
+    image: ${LEARNINGE_IMAGES:-learninge}/all-in-one:${LEARNINGE_TAG:-latest}
     build: { context: .., dockerfile: deploy/Dockerfile, args: { SERVICE: all-in-one } }
     mem_limit: 800m
     pids_limit: 512
