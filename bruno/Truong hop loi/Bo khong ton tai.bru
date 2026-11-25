@@ -1,0 +1,31 @@
+meta {
+  name: Bo khong ton tai
+  type: grpc
+  seq: 5
+}
+
+grpc {
+  url: {{baseUrl}}
+  method: /learninge.app.v1.ContentService/GetDeck
+  body: grpc
+  auth: inherit
+  methodType: unary
+  protoPath: ./protos/learninge/app/v1/content.proto
+}
+
+metadata {
+  x-client-version: {{clientVersion}}
+}
+
+body:grpc {
+  name: message 1
+  content: '''
+    {
+      "code": "T99"
+    }
+  '''
+}
+
+docs {
+  Mong đợi 5 NOT_FOUND.
+}

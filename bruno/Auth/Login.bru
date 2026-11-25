@@ -1,0 +1,38 @@
+meta {
+  name: Login
+  type: grpc
+  seq: 2
+}
+
+grpc {
+  url: {{baseUrl}}
+  method: /learninge.app.v1.AuthService/Login
+  body: grpc
+  auth: none
+  methodType: unary
+  protoPath: ./protos/learninge/app/v1/auth.proto
+}
+
+metadata {
+  x-client-version: {{clientVersion}}
+}
+
+body:grpc {
+  name: message 1
+  content: '''
+    {
+      "email": "{{email}}",
+      "password": "{{password}}",
+      "device_name": "{{deviceName}}"
+    }
+  '''
+}
+
+script:grpc:after-message-receive {
+  const token = bru.grpc.response.message.data.token;
+  if (token) bru.setVar('token', token);
+}
+
+docs {
+  EP-03. 5 lần/phút/IP. Token tự được giữ.
+}

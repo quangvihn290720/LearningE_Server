@@ -1,0 +1,31 @@
+meta {
+  name: GetResetQuestion
+  type: grpc
+  seq: 6
+}
+
+grpc {
+  url: {{baseUrl}}
+  method: /learninge.app.v1.AuthService/GetResetQuestion
+  body: grpc
+  auth: none
+  methodType: unary
+  protoPath: ./protos/learninge/app/v1/auth.proto
+}
+
+metadata {
+  x-client-version: {{clientVersion}}
+}
+
+body:grpc {
+  name: message 1
+  content: '''
+    {
+      "email": "{{email}}"
+    }
+  '''
+}
+
+docs {
+  EP-08
+}

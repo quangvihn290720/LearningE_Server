@@ -1,0 +1,31 @@
+meta {
+  name: RevokeSession
+  type: grpc
+  seq: 1
+}
+
+grpc {
+  url: {{baseUrl}}
+  method: /learninge.app.v1.AuthService/RevokeSession
+  body: grpc
+  auth: inherit
+  methodType: unary
+  protoPath: ./protos/learninge/app/v1/auth.proto
+}
+
+metadata {
+  x-client-version: {{clientVersion}}
+}
+
+body:grpc {
+  name: message 1
+  content: '''
+    {
+      "id": "{{sessionId}}"
+    }
+  '''
+}
+
+docs {
+  EP-18. Điền sessionId (lấy từ ListSessions) vào môi trường.
+}

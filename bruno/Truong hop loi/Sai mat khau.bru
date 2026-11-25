@@ -1,0 +1,32 @@
+meta {
+  name: Sai mat khau
+  type: grpc
+  seq: 1
+}
+
+grpc {
+  url: {{baseUrl}}
+  method: /learninge.app.v1.AuthService/Login
+  body: grpc
+  auth: none
+  methodType: unary
+  protoPath: ./protos/learninge/app/v1/auth.proto
+}
+
+metadata {
+  x-client-version: {{clientVersion}}
+}
+
+body:grpc {
+  name: message 1
+  content: '''
+    {
+      "email": "{{email}}",
+      "password": "saiMatKhau1"
+    }
+  '''
+}
+
+docs {
+  Mong đợi 16 UNAUTHENTICATED, trailer error-code = INVALID_CREDENTIALS.
+}

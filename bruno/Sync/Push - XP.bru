@@ -1,0 +1,52 @@
+meta {
+  name: Push - XP
+  type: grpc
+  seq: 5
+}
+
+grpc {
+  url: {{baseUrl}}
+  method: /learninge.app.v1.SyncService/Push
+  body: grpc
+  auth: inherit
+  methodType: unary
+  protoPath: ./protos/learninge/app/v1/sync.proto
+}
+
+metadata {
+  x-client-version: {{clientVersion}}
+}
+
+body:grpc {
+  name: message 1
+  content: '''
+    {
+      "device_id": "{{deviceId}}",
+      "changes": [
+        {
+          "record_id": "{{uuid}}",
+          "updated_at_ms": "{{nowMs}}",
+          "xp_event": {
+            "source_type": "XP_SOURCE_TYPE_CARD_SESSION",
+            "correct_count": 5,
+            "wrong_count": 1,
+            "total_count": 6,
+            "occurred_at_ms": "{{nowMs}}"
+          }
+        }
+      ]
+    }
+  '''
+}
+
+script:grpc:before-call-start {
+  const now = Date.now();
+  bru.setVar('nowMs', String(now));
+  bru.setVar('today', new Date(now + 7 * 3600 * 1000).toISOString().slice(0, 10));
+  bru.setVar('uuid', 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'
+    .replace(/x/g, () => Math.floor(Math.random() * 16).toString(16)));
+}
+
+docs {
+  EP-11. Điểm do server tính, xem results[0].current. Lên bảng xếp hạng.
+}

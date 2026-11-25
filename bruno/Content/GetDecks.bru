@@ -1,0 +1,34 @@
+meta {
+  name: GetDecks
+  type: grpc
+  seq: 3
+}
+
+grpc {
+  url: {{baseUrl}}
+  method: /learninge.app.v1.ContentService/GetDecks
+  body: grpc
+  auth: inherit
+  methodType: unary
+  protoPath: ./protos/learninge/app/v1/content.proto
+}
+
+metadata {
+  x-client-version: {{clientVersion}}
+}
+
+body:grpc {
+  name: message 1
+  content: '''
+    {
+      "codes": [
+        "T01",
+        "T02"
+      ]
+    }
+  '''
+}
+
+docs {
+  EP-20. 1..10 mã khác nhau.
+}

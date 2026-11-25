@@ -1,0 +1,25 @@
+meta {
+  name: Thieu phien ban app
+  type: grpc
+  seq: 3
+}
+
+grpc {
+  url: {{baseUrl}}
+  method: /learninge.app.v1.ContentService/GetManifest
+  body: grpc
+  auth: inherit
+  methodType: unary
+  protoPath: ./protos/learninge/app/v1/content.proto
+}
+
+body:grpc {
+  name: message 1
+  content: '''
+    {}
+  '''
+}
+
+docs {
+  Mong đợi 9 FAILED_PRECONDITION.
+}
