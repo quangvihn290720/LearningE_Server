@@ -75,7 +75,7 @@ Khôi phục `auth` làm tương tự, bỏ dòng `outbox-replay`. Điều gì x
 
 | Kho | Sau khi khôi phục |
 |---|---|
-| `sync` | Số thứ tự nhảy thêm 1 tỷ để không máy nào bỏ sót thay đổi mới; `data_epoch` tăng một để app biết cần đẩy lại. **App chưa đọc `data_epoch`**, nên dữ liệu đẩy sau bản sao lưu chỉ còn trên máy người dùng cho tới khi app làm phần này |
+| `sync` | Số thứ tự nhảy tới mốc theo giờ khôi phục để không máy nào bỏ sót thay đổi mới; `data_epoch` đổi nên app tự kéo lại từ đầu và đẩy lại phần server đã mất. Dữ liệu chỉ mất nếu máy người dùng không mở lại app. XP cũ hơn 7 ngày được đẩy lại sẽ tính 0 điểm, nên đừng khôi phục bản cũ hơn một tuần |
 | `auth` | Mọi máy phải đăng nhập lại. Tài khoản tạo sau bản sao lưu bị mất; tài khoản đã xóa sau bản sao lưu sống lại (đồng bộ của họ vẫn bị từ chối): phải xóa lại |
 | Cả hai | Nên lấy hai bản cùng thời điểm |
 

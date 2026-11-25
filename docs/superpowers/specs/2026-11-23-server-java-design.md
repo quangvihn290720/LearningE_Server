@@ -55,7 +55,7 @@ Dịch vụ không phụ thuộc nhau, chỉ gọi qua stub. Không Lombok, JPA,
 | I-26 | GRPC-API đọc `cf-connecting-ip` **hoặc** `x-forwarded-for`: sau proxy không phải Cloudflare client tự đặt được header đầu | Chỉ đọc một header, chọn bằng `EDGE_CLIENT_IP_HEADER` |
 | I-27 | Token sai không bị giới hạn tần suất | 60 lần/phút/IP, chỉ chặn token chưa có trong cache |
 | I-28 | BR-057 "không gia hạn trượt" là ASSUMPTION: người học đều vẫn bị đăng xuất mỗi 30 ngày | Tự gia hạn khi qua nửa hạn, tối đa 180 ngày |
-| I-29 | Khôi phục `sync.db` làm số thứ tự lùi | Nhảy 10⁹, thêm `data_epoch` (chỉ cộng trường) vào Push/Pull |
+| I-29 | Khôi phục `sync.db` làm số thứ tự lùi | Nhảy tới mốc theo giờ khôi phục (mili giây × 10³), thêm `data_epoch` = mili giây khôi phục (chỉ cộng trường) vào Push/Pull. Không cộng vào số của bản sao lưu: khôi phục hai lần từ cùng một bản sẽ ra cùng mốc |
 | I-30 | Trang quản trị sẽ phải mở HTTP (trái NFR-S16) | Không mở: `--ops=report` in một trang HTML tĩnh, các việc khác là lệnh `--ops` |
 | I-31 | Mã nội dung 2 chữ số chỉ có 100 mã mỗi chữ cái | Nhận 2 hoặc 3 chữ số |
 | I-32 | Nhiều edge, PostgreSQL | Không làm: một máy còn dư tải, thêm chỉ tăng độ phức tạp |

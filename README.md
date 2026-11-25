@@ -127,4 +127,3 @@ Hàng đợi sự kiện đứng thì log có `outbox_retry` (mỗi phút một 
 - Một bản edge duy nhất: cache token và bộ đếm tần suất nằm trong bộ nhớ.
 - Nơi triển khai (DEC-023) chưa chốt; đã có sẵn cách chạy với TLS (Caddy) và chế độ gộp cho VPS 2 GB.
 - T01, X01, J01, E01 trong `content-data/` còn là dữ liệu mẫu, chờ bộ chính thức.
-- App chưa đọc `data_epoch`, chưa có màn quản lý phiên đăng nhập, chưa gọi `GetDecks`/`GetExams`.
