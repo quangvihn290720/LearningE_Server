@@ -95,6 +95,7 @@ Quan trọng nhất:
 | `LEARNINGE_BACKUP_DIR` | auth, sync | nơi sao lưu tự động; rỗng = tắt |
 | `TOKEN_TTL_DAYS`, `TOKEN_MAX_AGE_DAYS` | auth | 30 ngày không dùng, tối đa 180 ngày |
 | `EDGE_DOMAIN` | Caddy | chỉ với `docker-compose.tls.yml` |
+| `LEARNINGE_IMAGES`, `LEARNINGE_TAG` | compose | chỉ trên VPS: kho image và commit đang chạy; `gen-env.sh prod` và `deploy.sh` tự ghi |
 | `APP_ENV` | cả 6 | `dev` hoặc `prod` |
 
 ## Vận hành
@@ -125,5 +126,5 @@ Hàng đợi sự kiện đứng thì log có `outbox_retry` (mỗi phút một 
 - MongoDB ghim 8.0.38 (20/11/2026), ngoại lệ của quy tắc phát hành ≥ 2 tuần: bản 8.0.34 trong tài liệu không khởi
   động trên Linux kernel ≥ 6.19 (SERVER-121912), kernel của máy CI GitHub hiện nay.
 - Một bản edge duy nhất: cache token và bộ đếm tần suất nằm trong bộ nhớ.
-- Nơi triển khai (DEC-023) chưa chốt; đã có sẵn cách chạy với TLS (Caddy) và chế độ gộp cho VPS 2 GB.
+- Nơi triển khai (DEC-023): dự kiến Azure for Students, 2 GB; chưa dựng. Quy trình ở docs/VAN-HANH.md mục 2.
 - T01, X01, J01, E01 trong `content-data/` còn là dữ liệu mẫu, chờ bộ chính thức.

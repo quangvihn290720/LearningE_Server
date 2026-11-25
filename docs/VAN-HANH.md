@@ -20,28 +20,54 @@ Hai cách đầu dùng chung volume dữ liệu. Đổi qua lại: `down` bản 
 
 ## 2. Triển khai lên VPS
 
-1. VPS Ubuntu, cài Docker Engine và Compose ≥ 2.24. Tường lửa chỉ mở 22, 80, 443.
-2. Trỏ bản ghi DNS `A` của tên miền về IP máy. Tên phải có dấu chấm (Java/Android không gửi SNI cho tên như `localhost`).
-3. Lấy mã nguồn, chạy `bash deploy/gen-env.sh`, rồi sửa `deploy/.env`:
-   - `APP_ENV=prod`
-   - `EDGE_DOMAIN=api.example.com`
-4. Chạy (VPS 2 GB thì thay tệp đầu bằng `docker-compose.small.yml`):
+Máy Ubuntu 24.04, 2 GB RAM, chế độ gộp sau Caddy. Không biên dịch trên máy: mỗi lần `main` xanh, CI đẩy image lên
+`ghcr.io/quangvihn290720/learninge/all-in-one:<commit>`.
+
+**Một lần cho cả dự án.** Sau lần CI đầu tiên trên `main` có job `images`: GitHub → Packages → `learninge/all-in-one`
+→ Package settings → đổi sang *Public* (nếu chưa). Image chỉ chứa mã đã biên dịch, không có khóa.
+
+**Máy và tên miền (Azure + Cloudflare):**
+
+1. Azure: VM Ubuntu Server 24.04 LTS **x64**, cỡ `Standard_B1ms`, đăng nhập bằng khóa SSH, IP công khai *Static*.
+   Vùng được phép xem ở Policy → Assignments → *Allowed resource deployment regions*. Đặt cảnh báo ở Cost Management.
+2. NSG mở 80 và 443 cho mọi nơi, 22 chỉ cho IP của bạn. Không dựa vào UFW: Docker mở cổng vượt qua UFW.
+3. Cloudflare: bản ghi `A` tên `api` → IP máy, **DNS only (mây xám)**. Caddy tự xin chứng chỉ.
+
+**Trên máy:**
 
 ```bash
-docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.tls.yml up --build -d --wait
+curl -fsSLO https://raw.githubusercontent.com/quangvihn290720/LearningE_Server/main/deploy/setup-vm.sh
+less setup-vm.sh                    # đọc trước khi chạy
+bash setup-vm.sh                    # Docker, swap 2 GB, tự vá bảo mật, mã nguồn ở /opt/LearningE_Server
+exit                                # đăng nhập lại để dùng docker không cần sudo
 ```
 
-5. Nạp nội dung: xem mục 6.
-6. Bản release của app đặt `GRPC_HOST=api.example.com`, `GRPC_PORT=443`, `GRPC_TLS=true`.
-
-Tệp TLS tự bật `EDGE_TRUST_PROXY` và gỡ cổng 50051 khỏi máy chủ. Caddy tự xin, gia hạn chứng chỉ, và ghi đè
-`X-Forwarded-For` nên người dùng không giả được IP. Thử trên máy cá nhân: `CADDY_TLS="tls internal"`.
+```bash
+cd /opt/LearningE_Server
+bash deploy/gen-env.sh prod api.example.com
+deploy/deploy.sh                    # kéo image, chạy, nạp nội dung, gọi thử qua TLS
+```
 
 **Cất `deploy/.env` ở nơi an toàn ngoài máy chủ.** Mất `LEARNINGE_PSEUDONYM_KEY` thì số liệu cũ không nối được với
 người dùng; mất `LEARNINGE_SERVER_KEY` thì bộ đếm khóa đăng nhập về 0; mất mật khẩu Mongo thì không vào được kho phụ.
 
-Dùng tunnel trên máy cá nhân thay cho VPS: chạy `docker-compose.yml`, đặt `EDGE_TRUST_PROXY=true` (Cloudflare thì thêm
-`EDGE_CLIENT_IP_HEADER=cf-connecting-ip`). Quên bước này thì mọi người dùng bị tính chung một IP.
+**Lên bản mới:** `deploy/deploy.sh`. Script sao lưu trước, và dừng trước khi đụng tới bản đang chạy nếu chưa có image.
+**Quay lại:** `deploy/deploy.sh <commit cũ>`. Nếu bản mới đã đổi lược đồ SQLite (thêm tệp trong
+`db/migration`), bản cũ có thể chạy sai trên lược đồ mới: khôi phục bản sao lưu ngay trước khi đổi (mục 4 và 7).
+
+Trong `/opt/LearningE_Server/deploy`, `docker compose …` tự dùng đúng hai tệp compose, không cần `-f`.
+
+Bản release của app đặt `learninge.releaseGrpcHost=api.example.com` (cổng 443, TLS luôn bật).
+
+**Cloudflare:**
+
+- Tunnel (`cloudflared`) **không dùng được**: nó không chuyển gRPC qua tên miền công khai.
+- Mây cam (proxy) thì Caddy thấy IP của Cloudflare, mọi người dùng bị gộp chung và chặn nhau ở giới hạn đăng nhập.
+  Muốn bật phải sửa `deploy/caddy/Caddyfile` (`trusted_proxies` là dải IP Cloudflare, lấy IP từ `CF-Connecting-IP`),
+  chặn 443 từ ngoài dải đó, bật gRPC ở Network và đặt SSL *Full (strict)*.
+
+**Không dùng VPS:** ngrok trên máy cá nhân thì chạy `docker-compose.yml` và đặt `EDGE_TRUST_PROXY=true`. Quên bước này
+thì mọi người dùng bị tính chung một IP. Thử Caddy trên máy cá nhân: `CADDY_TLS="tls internal"`.
 
 ## 3. Sao lưu
 
@@ -49,11 +75,13 @@ Dùng tunnel trên máy cá nhân thay cho VPS: chạy `docker-compose.yml`, đ�
 `LEARNINGE_BACKUP_KEEP`). Mỗi bản được kiểm trước khi mang tên chính thức. MongoDB không cần sao lưu: nội dung nạp lại
 từ `content-data`, bảng xếp hạng dựng lại từ SQLite; chỉ mất nhật ký và số liệu của `insight`.
 
-Các bản này nằm **cùng máy**. Chép ra máy khác mỗi ngày (tệp chứa email và mật khẩu đã băm, giữ như bí mật):
+`deploy.sh` cũng tạo một bản trước mỗi lần đổi, tính chung vào 14 bản.
 
-```bash
-$C cp auth:/backup ./backup-auth
-$C cp sync:/backup ./backup-sync
+Các bản này nằm **cùng máy**. Kéo về máy Windows mỗi ngày bằng Task Scheduler; script kiểm mã băm, giữ 30 lần gần
+nhất. Tệp chứa email và mật khẩu đã băm, giữ như bí mật. Khóa SSH phải dùng được không cần gõ mật khẩu:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy/pull-backup.ps1 -Server <user>@api.example.com -Destination D:\LearningE-backup
 ```
 
 Sao lưu ngay: `$C run --rm auth --ops=backup --out=/backup` (tương tự `sync`).
@@ -113,7 +141,7 @@ hạng, đi qua đúng RPC như app. Chạy lại thì bỏ qua người đã c�
 Cùng các lệnh, chạy trong container đang có, thêm `--only=<dịch vụ>`:
 
 ```bash
-S="docker compose -f deploy/docker-compose.small.yml"
+S="docker compose -f deploy/docker-compose.small.yml"     # trên VPS: cd deploy; S="docker compose"
 ops() { $S exec -T -e JAVA_TOOL_OPTIONS="-Xmx128m -Dorg.sqlite.tmpdir=/app/native -Dio.netty.native.workdir=/app/native" \
   edge java org.springframework.boot.loader.launch.JarLauncher "$@"; }
 ops --only=content --ops=import --dir=/content-data

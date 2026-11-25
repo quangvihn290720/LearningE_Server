@@ -3,7 +3,7 @@
 #   */10 * * * * /opt/LearningE_Server/deploy/check.sh
 # In ra vấn đề và thoát 1. Có ALERT_WEBHOOK_URL (Discord, Slack…) thì gửi khi tình trạng ĐỔI, không gửi lặp.
 set -uo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")" || exit
 export MSYS_NO_PATHCONV=1
 PROJECT="${COMPOSE_PROJECT_NAME:-learninge}"
 SINCE="${CHECK_SINCE:-10m}"
