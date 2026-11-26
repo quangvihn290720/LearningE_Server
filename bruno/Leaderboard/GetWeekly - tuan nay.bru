@@ -1,0 +1,31 @@
+meta {
+  name: GetWeekly - tuan nay
+  type: grpc
+  seq: 1
+}
+
+grpc {
+  url: {{baseUrl}}
+  method: /learninge.app.v1.LeaderboardService/GetWeekly
+  body: grpc
+  auth: inherit
+  methodType: unary
+  protoPath: ./protos/learninge/app/v1/leaderboard.proto
+}
+
+metadata {
+  x-client-version: {{clientVersion}}
+}
+
+body:grpc {
+  name: message 1
+  content: '''
+    {
+      "week": "WEEK_SELECTOR_CURRENT"
+    }
+  '''
+}
+
+docs {
+  EP-13
+}

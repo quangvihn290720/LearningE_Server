@@ -8,8 +8,8 @@
 {$EDGE_DOMAIN} {
 	{$CADDY_TLS}
 	# gRPC là HTTP/2 tới tận edge. Caddy ghi đè X-Forwarded-For bằng IP thật nên app không giả được.
+	# Không đặt flush_interval -1: lời từ chối chỉ có trailer sẽ thỉnh thoảng mất mã lỗi, app thấy INTERNAL.
 	reverse_proxy edge:50051 {
-		flush_interval -1
 		transport http {
 			versions h2c
 		}

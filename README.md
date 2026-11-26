@@ -46,6 +46,9 @@ docker run -d --name learninge-mongo -p 127.0.0.1:27017:27017 mongo:8.0.38
 
 Không có Mongo thì đăng ký, đăng nhập, đồng bộ vẫn chạy; bảng xếp hạng và nội dung trả `UNAVAILABLE`.
 
+**Thử bằng Bruno ≥ 4.3:** Open Collection → thư mục [bruno/](bruno), chọn môi trường `Local` hoặc `VPS`, điền biến rồi
+chạy `Login`. Đổi proto thì chép lại `proto/src/main/proto/learninge/app` vào `bruno/protos/learninge/app`.
+
 **Thử bằng grpcurl** (bật `LEARNINGE_GRPC_REFLECTION=true` trong `deploy/.env` khi dev, hoặc dùng `-import-path`):
 
 ```bash

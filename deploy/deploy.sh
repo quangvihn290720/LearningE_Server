@@ -65,6 +65,8 @@ main() {
     docker compose logs --tail 60 edge
     fail "bản mới không lên. Quay lại: deploy/deploy.sh $previous. Nếu bản mới đã đổi lược đồ SQLite: docs/VAN-HANH.md mục 2"
   fi
+  # Caddyfile là tệp gắn vào container: compose không biết nội dung đổi nên không tự tạo lại.
+  docker compose up -d --no-build --no-deps --force-recreate caddy
   ops --only=content --ops=import --dir=/content-data
 
   echo "== Gọi thử https://$domain"

@@ -1,0 +1,35 @@
+{
+  "version": "1",
+  "name": "LearningE",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ],
+  "protobuf": {
+    "protoFiles": [
+      {
+        "path": "./protos/learninge/app/v1/auth.proto",
+        "type": "file"
+      },
+      {
+        "path": "./protos/learninge/app/v1/content.proto",
+        "type": "file"
+      },
+      {
+        "path": "./protos/learninge/app/v1/sync.proto",
+        "type": "file"
+      },
+      {
+        "path": "./protos/learninge/app/v1/leaderboard.proto",
+        "type": "file"
+      }
+    ],
+    "importPaths": [
+      {
+        "path": "./protos",
+        "enabled": true
+      }
+    ]
+  }
+}

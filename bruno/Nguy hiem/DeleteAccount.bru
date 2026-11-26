@@ -1,0 +1,35 @@
+meta {
+  name: DeleteAccount
+  type: grpc
+  seq: 5
+}
+
+grpc {
+  url: {{baseUrl}}
+  method: /learninge.app.v1.AuthService/DeleteAccount
+  body: grpc
+  auth: inherit
+  methodType: unary
+  protoPath: ./protos/learninge/app/v1/auth.proto
+}
+
+metadata {
+  x-client-version: {{clientVersion}}
+}
+
+body:grpc {
+  name: message 1
+  content: '''
+    {
+      "password": "{{password}}"
+    }
+  '''
+}
+
+script:grpc:after-call-end {
+  if (bru.grpc.response.statusCode === 0) bru.deleteVar('token');
+}
+
+docs {
+  EP-10. XÓA HẲN tài khoản đang đăng nhập, không hoàn tác được.
+}

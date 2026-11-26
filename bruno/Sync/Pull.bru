@@ -1,0 +1,32 @@
+meta {
+  name: Pull
+  type: grpc
+  seq: 1
+}
+
+grpc {
+  url: {{baseUrl}}
+  method: /learninge.app.v1.SyncService/Pull
+  body: grpc
+  auth: inherit
+  methodType: unary
+  protoPath: ./protos/learninge/app/v1/sync.proto
+}
+
+metadata {
+  x-client-version: {{clientVersion}}
+}
+
+body:grpc {
+  name: message 1
+  content: '''
+    {
+      "since": "0",
+      "limit": 100
+    }
+  '''
+}
+
+docs {
+  EP-12
+}

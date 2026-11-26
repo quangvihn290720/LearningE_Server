@@ -1,0 +1,57 @@
+meta {
+  name: Push - card va favorite
+  type: grpc
+  seq: 3
+}
+
+grpc {
+  url: {{baseUrl}}
+  method: /learninge.app.v1.SyncService/Push
+  body: grpc
+  auth: inherit
+  methodType: unary
+  protoPath: ./protos/learninge/app/v1/sync.proto
+}
+
+metadata {
+  x-client-version: {{clientVersion}}
+}
+
+body:grpc {
+  name: message 1
+  content: '''
+    {
+      "device_id": "{{deviceId}}",
+      "changes": [
+        {
+          "record_id": "T01-0001",
+          "updated_at_ms": "{{nowMs}}",
+          "card_progress": {
+            "box": 2,
+            "next_review_date": "{{today}}",
+            "first_learned_date": "{{today}}",
+            "last_reviewed_at_ms": "{{nowMs}}",
+            "review_count": 1
+          }
+        },
+        {
+          "record_id": "T01-0002",
+          "updated_at_ms": "{{nowMs}}",
+          "favorite": {
+            "created_at_ms": "{{nowMs}}"
+          }
+        }
+      ]
+    }
+  '''
+}
+
+script:grpc:before-call-start {
+  const now = Date.now();
+  bru.setVar('nowMs', String(now));
+  bru.setVar('today', new Date(now + 7 * 3600 * 1000).toISOString().slice(0, 10));
+}
+
+docs {
+  EP-11. Gửi lại bản cũ hơn thì nhận STALE.
+}
